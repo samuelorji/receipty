@@ -1,0 +1,16 @@
+# Temp files
+*~
+.idea
+# Compile results
+target/**
+project/project/**
+project/target/**
+*pyc
+
+**/target/**
+
+# Rando's
+todo
+.DS_Store
+.ensime
+.ensime_cache
