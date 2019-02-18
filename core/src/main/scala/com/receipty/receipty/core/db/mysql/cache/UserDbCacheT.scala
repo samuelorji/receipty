@@ -1,0 +1,92 @@
+package com.receipty.receipty.core.db
+package mysql.cache
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.{FiniteDuration, _}
+
+import akka.actor.Props
+import akka.pattern.{ ask, pipe }
+
+import com.receipty._
+
+import receipty.core.db.mysql.cache.InnerWorkings.{ MySqlDbCacheManagerT, UpdateCacheRequestImpl }
+import receipty.core.db.mysql.service.MysqlDbService.{ ItemDbEntry, ItemFetchDbQuery, UserDbEntry, UserFetchDbQuery }
+
+
+object UserDbCache extends UserDbCacheT
+object ItemDbCache extends ItemDbCacheT
+
+private [cache] trait ItemDbCacheT extends MySqlDbCacheManagerT[ItemDbEntry]{
+
+  def getAllItems = itemMap.values.toList
+
+  override def setEntries(x: List[ItemDbEntry]): Unit = {
+
+    setItemMap(x.foldLeft(Map[Int, ItemDbEntry]()) {
+      case (l, entry) => l.updated(
+        entry.id, entry
+      )
+    }
+    )
+  }
+
+  def props = Props(classOf[ItemDbCache],this)
+  private var itemMap = Map[Int/* item Id */, ItemDbEntry /* Item */]()
+
+  private def setItemMap(map : Map[Int,ItemDbEntry]): Unit ={
+    println(itemMap)
+    itemMap = map
+  }
+}
+private[cache] trait UserDbCacheT extends MySqlDbCacheManagerT[UserDbEntry]{
+
+  def checkIfUserExixsts(phoneNumber : String) =
+    userMap.get(phoneNumber)
+
+  override def setEntries(x: List[UserDbEntry]): Unit = {
+    super.setEntries(x)
+
+    setAuthMap(x.foldLeft(Map[String,UserDbEntry]()){
+      case (m,entry) => m.updated(
+          entry.phoneNumber
+        ,entry
+      )
+    })
+  }
+
+  def props = Props(classOf[UserDbCache],this)
+  private var userMap = Map[String/* phone number */,UserDbEntry /* user */]()
+
+  private def setAuthMap(map : Map[String ,UserDbEntry]): Unit = {
+    println(userMap)
+    userMap = map
+  }
+}
+
+
+/*
+The authentication Db Cache is an Actor because it extends the MysqlDbCacheT which is the actor
+that handles the scheduling of caching, this is the actor class that should be spun up on program start
+ */
+private [core] class UserDbCache(
+  val manager : UserDbCacheT
+  ) extends MySqlDbCacheT[UserDbEntry]{
+  override protected val updateFrequency: FiniteDuration = 1 minute
+
+  override protected def specificReceive: Receive = {
+    case UpdateCacheRequestImpl =>
+      (mysqlDbService ? UserFetchDbQuery).mapTo[List[UserDbEntry]] pipeTo sender
+  }
+}
+
+private[core] class ItemDbCache(
+ val manager : ItemDbCacheT
+ ) extends MySqlDbCacheT[ItemDbEntry]{
+
+  override protected val updateFrequency: FiniteDuration = 1 minute
+
+  override protected def specificReceive: Receive = {
+    case UpdateCacheRequestImpl =>
+      (mysqlDbService ? ItemFetchDbQuery).mapTo[List[ItemDbEntry]] pipeTo sender()
+  }
+}
