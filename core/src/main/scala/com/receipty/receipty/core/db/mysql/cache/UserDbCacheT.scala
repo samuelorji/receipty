@@ -9,7 +9,7 @@ import akka.pattern.{ ask, pipe }
 
 import com.receipty._
 
-import receipty.core.db.mysql.cache.InnerWorkings.{ MySqlDbCacheManagerT, UpdateCacheRequestImpl }
+import receipty.core.db.mysql.cache.mechanics.{ MySqlDbCacheManagerT, UpdateCacheRequestImpl }
 import receipty.core.db.mysql.service.MysqlDbService.{ ItemDbEntry, ItemFetchDbQuery, UserDbEntry, UserFetchDbQuery }
 
 
@@ -18,7 +18,7 @@ object ItemDbCache extends ItemDbCacheT
 
 private [cache] trait ItemDbCacheT extends MySqlDbCacheManagerT[ItemDbEntry]{
 
-  def getAllItems = itemMap.values.toList
+  def getUserItems(uid : Int) = itemMap.values.toList.filter(_.id == uid)
 
   override def setEntries(x: List[ItemDbEntry]): Unit = {
 
@@ -34,7 +34,6 @@ private [cache] trait ItemDbCacheT extends MySqlDbCacheManagerT[ItemDbEntry]{
   private var itemMap = Map[Int/* item Id */, ItemDbEntry /* Item */]()
 
   private def setItemMap(map : Map[Int,ItemDbEntry]): Unit ={
-    println(itemMap)
     itemMap = map
   }
 }
@@ -58,11 +57,9 @@ private[cache] trait UserDbCacheT extends MySqlDbCacheManagerT[UserDbEntry]{
   private var userMap = Map[String/* phone number */,UserDbEntry /* user */]()
 
   private def setAuthMap(map : Map[String ,UserDbEntry]): Unit = {
-    println(userMap)
     userMap = map
   }
 }
-
 
 /*
 The authentication Db Cache is an Actor because it extends the MysqlDbCacheT which is the actor
@@ -72,7 +69,6 @@ private [core] class UserDbCache(
   val manager : UserDbCacheT
   ) extends MySqlDbCacheT[UserDbEntry]{
   override protected val updateFrequency: FiniteDuration = 1 minute
-
   override protected def specificReceive: Receive = {
     case UpdateCacheRequestImpl =>
       (mysqlDbService ? UserFetchDbQuery).mapTo[List[UserDbEntry]] pipeTo sender

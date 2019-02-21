@@ -1,33 +1,29 @@
 package com.receipty.receipty.core
 package db.mysql.mapper
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
+import scala.concurrent.Future
 
 import com.github.mauricio.async.db.RowData
 import com.receipty._
-import com.receipty.receipty.core.db.mysql.cache.InnerWorkings.MySqlDbCacheEntry
-import com.receipty.receipty.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
-import org.joda.time.LocalDateTime
 import receipty.core.db.mysql.ReceiptyMySqlDb
+import receipty.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
+import org.joda.time.LocalDateTime
 
-private[mysql] object ReceiptyMapper extends ReceiptyMySqlDb  {
-
-  //used for the database request
+object ReceiptyMapper extends ReceiptyMapperT
+private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
 
   val FetchAllUSersSql  = "SELECT * FROM user"
-  val fetchAllItemsSql = "SELECT * FROM item"
+  val fetchAllItemsSql  = "SELECT * FROM item"
 
   def fetchAllItems: Future[List[ItemDbEntry]] = {
 
     pool.sendPreparedStatement(fetchAllItemsSql) map{ queryResult =>
       queryResult .rows match {
           case Some(rows) => rows.toList.map(x => rowToItemModel(x))
-          case None => List()
+          case None       => List()
         }
     }
-
   }
 
   def fetchAllUsers : Future[List[UserDbEntry]] = {
@@ -40,15 +36,19 @@ private[mysql] object ReceiptyMapper extends ReceiptyMySqlDb  {
     }
   }
 
+  def insertUserIntoDb(user : UserDbEntry) = {
+    val query = s"INSERT INTO user (phone,password,province,county) VALUES (${user.phoneNumber},'${user.password}',${user.province},${user.county})"
+    pool.sendPreparedStatement(query)
+  }
+
    def rowToItemModel(row: RowData): ItemDbEntry = {
 
     ItemDbEntry(
-      id = row("iid").asInstanceOf[Int],
+      id          = row("iid").asInstanceOf[Int],
       description = row("description").asInstanceOf[String],
-      owner = row("owner").asInstanceOf[Int],
-      added = row("added").asInstanceOf[LocalDateTime].toString("yyyy-MM-dd")
+      owner       = row("owner").asInstanceOf[Int],
+      added       = row("added").asInstanceOf[LocalDateTime].toString("yyyy-MM-dd")
     )
-
   }
   def rowToUserModel(row: RowData): UserDbEntry = {
 
@@ -60,7 +60,6 @@ private[mysql] object ReceiptyMapper extends ReceiptyMySqlDb  {
       province    = row("province").asInstanceOf[Int],
       joined      = row("joined").asInstanceOf[LocalDateTime].toString("yyyy-MM-dd")
     )
-
   }
 }
 

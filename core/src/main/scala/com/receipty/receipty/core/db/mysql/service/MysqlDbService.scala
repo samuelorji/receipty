@@ -6,18 +6,20 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import akka.actor.Actor
 import akka.pattern.pipe
 
-import com.receipty.receipty.core.db.mysql.cache.InnerWorkings.MySqlDbCacheEntry
-import com.receipty.receipty.core.db.mysql.mapper.ReceiptyMapper
-import com.receipty.receipty.core.db.mysql.service.MysqlDbService.{ItemDbEntry, ItemFetchDbQuery, UserDbEntry, UserFetchDbQuery}
+import com.receipty._
+
+import receipty.core.db.mysql.cache.mechanics.MySqlDbCacheEntry
+import receipty.core.db.mysql.mapper.ReceiptyMapper
+import receipty.core.db.mysql.service.MysqlDbService.{ItemDbEntry, ItemFetchDbQuery, UserDbEntry, UserFetchDbQuery}
 
 object MysqlDbService{
   case class UserDbEntry (
-    id: Int,
+    id: Int = 0,
     phoneNumber: String,
     password: String,
     province : Int ,
     county :Int ,
-    joined : String
+    joined : String = ""
   ) extends MySqlDbCacheEntry
 
   case class ItemDbEntry(

@@ -5,7 +5,7 @@ import akka.actor.{ ActorRef, Props }
 
 import com.receipty._
 
-import receipty.core.db.mysql.cache.InnerWorkings.{MySqlDbCache, MySqlDbCacheEntry}
+import receipty.core.db.mysql.cache.mechanics.{MySqlDbCache, MySqlDbCacheEntry}
 import receipty.core.db.mysql.service.MysqlDbService
 
 trait MySqlDbCacheT[T <: MySqlDbCacheEntry] extends MySqlDbCache[T] {

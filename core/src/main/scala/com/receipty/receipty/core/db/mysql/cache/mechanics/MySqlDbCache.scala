@@ -1,5 +1,5 @@
 package com.receipty.receipty.core.db
-package mysql.cache.InnerWorkings
+package mysql.cache.mechanics
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -14,7 +14,6 @@ trait MySqlDbCacheEntry
 case object UpdateCacheRequestImpl
 
 trait MySqlDbCacheManagerT[DbEntry <: MySqlDbCacheEntry]{
-
   private var entries: Option[List[DbEntry]] = None
   def setEntries(x : List[DbEntry]): Unit ={
     entries = Some(x)
@@ -23,12 +22,11 @@ trait MySqlDbCacheManagerT[DbEntry <: MySqlDbCacheEntry]{
 
 trait MySqlDbCache[DbEntry <: MySqlDbCacheEntry] extends Actor
   with ActorLogging {
-
   private case object UpdateCacheRequest
 
   implicit val timeout = Timeout(1 minute)
 
-  val mysqlDbService = createMySqlDbService
+  val mysqlDbService   = createMySqlDbService
   def createMySqlDbService : ActorRef
 
   protected val updateFrequency: FiniteDuration
@@ -49,9 +47,7 @@ trait MySqlDbCache[DbEntry <: MySqlDbCacheEntry] extends Actor
       updateFut onComplete{
         case Success(entries) => manager.setEntries(entries)
         case Failure(ex) => log.error(s"Some error occurred fetching the data , exception : $ex")
-
       }
-
   }
 
   override def postStop(): Unit = {
@@ -67,6 +63,4 @@ trait MySqlDbCache[DbEntry <: MySqlDbCacheEntry] extends Actor
       UpdateCacheRequest
     )
   }
-
-
 }
