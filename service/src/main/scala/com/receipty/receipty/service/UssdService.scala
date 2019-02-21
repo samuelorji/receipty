@@ -14,14 +14,14 @@ import receipty.core.db.mysql.cache.{ ItemDbCache, UserDbCache }
 import receipty.core.db.mysql.mapper.ReceiptyMapper
 import receipty.core.db.mysql.service.MysqlDbService.UserDbEntry
 
-object USSDHandlerService {
+object UssdService {
   case class UssdRequest(
     phoneNumber: String,
     input: String
   )
 }
 
-class USSDHandlerService extends Actor {
+class UssdService extends Actor {
   // this is the service that will check if the user exist or not and handle user registration
 
   private val countyMap =
@@ -99,18 +99,19 @@ class USSDHandlerService extends Actor {
     }
   }
 
-  import USSDHandlerService._
+  import UssdService._
 
   def receive = {
     case req: UssdRequest =>
       val currentSender = sender()
 
       val userExist = UserDbCache.checkIfUserExixsts(req.phoneNumber.substring(1))
+
       userExist match {
         case Some(user) =>
           //User wants to make a sale
           val userItems = ItemDbCache.getUserItems(user.id)
-          response = "END YOu have been registered"
+          response = "END You have been registered"
         case None =>
           //New User
           if (req.input.length < 1) {
@@ -154,11 +155,11 @@ class USSDHandlerService extends Actor {
                       response = "CON " + showCounty(7)
                     case 8 =>
                       response = "CON " + showCounty(8)
-                    case _ => response = "END Invalid Entry"
+                    case _ => response = s"END Invalid Entry $provinceEntry"
                   }
                 } catch {
                   case _: NumberFormatException =>
-                    response = "END Invalid Entry, Please try using Numbers "
+                    response = "END Invalid Entry, Please use Numbers"
                 }
 
               case 2 => //here the user just typed his county number, next entry is for first attempt at pin
@@ -170,21 +171,26 @@ class USSDHandlerService extends Actor {
                     response = "END Invalid Entry"
                   } else {
                     val selectionPrefix = "CON Please Enter a 4 Digit Pin"
-                    response = selectionPrefix
+                    response            = selectionPrefix
                   }
                 }
                 catch {
                   case _: NumberFormatException =>
-                    response = "END Invalid Entry Please enter a digit"
+                    response = "END Invalid Entry, Please use Numbers"
                 }
               case 3 => //here the user just entered his password again to confirm password, If Successful we should End the Registration Process by telling the user his UserID
 
                 try {
-                  entries(2).toInt
-                  response = "CON Please Confirm Password"
+                   entries(2).toInt
+                   if(entries(2).length == 4){
+                     response = "CON Please Confirm Password"
+                   }else{
+                     response = "END Password should be 4 digits"
+                   }
+
                 } catch {
                   case _: NumberFormatException =>
-                    response = "END Please type Numbers"
+                    response = "END Invalid Entry, Please use Numbers"
                 }
               case 4 =>
                 val password = entries(3)
@@ -193,9 +199,9 @@ class USSDHandlerService extends Actor {
                   val pin = MessageDigest.getInstance("SHA-256").digest(password.getBytes).map("%02x".format(_)).mkString
                   val user = UserDbEntry(
                     phoneNumber = req.phoneNumber,
-                    province = entries(0).toInt,
-                    county = entries(1).toInt,
-                    password = pin
+                    province    = entries(0).toInt,
+                    county      = entries(1).toInt,
+                    password    = pin
                   )
                   //create Messaging service here
                   val res = Await.result(ReceiptyMapper.insertUserIntoDb(user), 10 seconds)
@@ -205,7 +211,7 @@ class USSDHandlerService extends Actor {
                     response = "END Registration Unsuccessful , Please try registering again  "
                   }
                 } else if (password.length > 4) {
-                  response = "END Password more than 4 digits"
+                  response = "END Password should be 4 digits"
                 }
                 else {
                   response = "END Passwords do not match "

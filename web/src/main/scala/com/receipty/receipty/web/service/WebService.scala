@@ -10,8 +10,8 @@ import akka.http.scaladsl.server.Directives.{extractRequest, formFields, path, p
 import akka.pattern.ask
 import akka.util.Timeout
 
-import com.receipty.receipty.service.USSDHandlerService
-import com.receipty.receipty.service.USSDHandlerService.UssdRequest
+import com.receipty.receipty.service.UssdService
+import com.receipty.receipty.service.UssdService.UssdRequest
 
 
 trait ReceiptyWebServiceT {
@@ -21,7 +21,7 @@ trait ReceiptyWebServiceT {
   implicit def actorRefFactory: ActorSystem
 
   private val ussdService = createUssdService
-  def createUssdService   = actorRefFactory.actorOf(Props[USSDHandlerService])
+  def createUssdService   = actorRefFactory.actorOf(Props[UssdService])
 
   lazy val routes = {
     path("ussd" / "callback") {
