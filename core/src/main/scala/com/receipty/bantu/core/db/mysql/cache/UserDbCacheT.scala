@@ -1,16 +1,15 @@
-package com.receipty.receipty.core.db
-package mysql.cache
+package com.receipty.bantu.core
+package db.mysql.cache
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{FiniteDuration, _}
 
 import akka.actor.Props
-import akka.pattern.{ ask, pipe }
+import akka.pattern.{ask, pipe}
 
 import com.receipty._
-
-import receipty.core.db.mysql.cache.mechanics.{ MySqlDbCacheManagerT, UpdateCacheRequestImpl }
-import receipty.core.db.mysql.service.MysqlDbService.{ ItemDbEntry, ItemFetchDbQuery, UserDbEntry, UserFetchDbQuery }
+import com.receipty.bantu.core.db.mysql.cache.mechanics.{MySqlDbCacheManagerT, UpdateCacheRequestImpl}
+import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, ItemFetchDbQuery, UserDbEntry, UserFetchDbQuery}
 
 
 object UserDbCache extends UserDbCacheT

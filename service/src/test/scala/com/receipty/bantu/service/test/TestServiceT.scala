@@ -1,9 +1,10 @@
-package com.receipty.receipty.service.test
+package com.receipty.bantu.service
+package test
 
 import akka.actor.ActorSystem
-import akka.testkit.{ImplicitSender, TestKit}
+import akka.testkit.{ ImplicitSender, TestKit }
 
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+import org.scalatest.{ BeforeAndAfterAll, Matchers, WordSpecLike }
 
 
 abstract class TestServiceT extends TestKit(ActorSystem("TestSystem"))

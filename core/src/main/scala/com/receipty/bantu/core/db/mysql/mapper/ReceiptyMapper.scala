@@ -1,13 +1,12 @@
-package com.receipty.receipty.core
-package db.mysql.mapper
+package com.receipty.bantu.core.db.mysql.mapper
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 import com.github.mauricio.async.db.RowData
 import com.receipty._
-import receipty.core.db.mysql.ReceiptyMySqlDb
-import receipty.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
+import com.receipty.bantu.core.db.mysql.ReceiptyMySqlDb
+import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
 import org.joda.time.LocalDateTime
 
 object ReceiptyMapper extends ReceiptyMapperT

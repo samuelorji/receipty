@@ -1,5 +1,4 @@
-package com.receipty.receipty.web
-package service
+package com.receipty.bantu.web.service
 
 import scala.concurrent.duration._
 
@@ -10,8 +9,8 @@ import akka.http.scaladsl.server.Directives.{extractRequest, formFields, path, p
 import akka.pattern.ask
 import akka.util.Timeout
 
-import com.receipty.receipty.service.UssdService
-import com.receipty.receipty.service.UssdService.UssdRequest
+import com.receipty.bantu.service.UssdService
+import com.receipty.bantu.service.UssdService.UssdRequest
 
 
 trait ReceiptyWebServiceT {

@@ -1,4 +1,4 @@
-name := "receipty"
+name := "bantu"
 
 version := "0.1"
 
@@ -9,7 +9,7 @@ val akkaHttpVersion  = "10.1.7"
 val scalaTestVersion = "3.0.5"
 
 
-lazy val receipty = (project in file("."))
+lazy val bantu = (project in file("."))
   .aggregate(core,service,web)
 lazy val core = (project in file("core")).
   settings(

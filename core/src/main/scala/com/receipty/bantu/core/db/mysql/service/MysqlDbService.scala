@@ -1,5 +1,4 @@
-package com.receipty.receipty.core
-package db.mysql.service
+package com.receipty.bantu.core.db.mysql.service
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -7,10 +6,11 @@ import akka.actor.Actor
 import akka.pattern.pipe
 
 import com.receipty._
-
-import receipty.core.db.mysql.cache.mechanics.MySqlDbCacheEntry
-import receipty.core.db.mysql.mapper.ReceiptyMapper
-import receipty.core.db.mysql.service.MysqlDbService.{ItemDbEntry, ItemFetchDbQuery, UserDbEntry, UserFetchDbQuery}
+import com.receipty.bantu.core.db.mysql.cache.mechanics.MySqlDbCacheEntry
+import com.receipty.bantu.core.db.mysql.mapper.ReceiptyMapper
+import bantu.core.db.mysql.cache.mechanics.MySqlDbCacheEntry
+import bantu.core.db.mysql.mapper.ReceiptyMapper
+import bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, ItemFetchDbQuery, UserDbEntry, UserFetchDbQuery}
 
 object MysqlDbService{
   case class UserDbEntry (

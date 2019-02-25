@@ -1,5 +1,4 @@
-package com.receipty.receipty.core.db
-package mysql.cache.mechanics
+package com.receipty.bantu.core.db.mysql.cache.mechanics
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global

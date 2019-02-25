@@ -1,10 +1,9 @@
-package com.receipty.receipty.core
-package db.mysql
+package com.receipty.bantu.core.db.mysql
 
 import com.github.mauricio.async.db.Configuration
 import com.github.mauricio.async.db.mysql.pool.MySQLConnectionFactory
 import com.github.mauricio.async.db.pool.{ConnectionPool, PoolConfiguration}
-import com.receipty.receipty.core.config.ReceiptyConfig
+import com.receipty.bantu.core.config.ReceiptyConfig
 
 private[mysql] object ReceiptyMySqlDb{
 

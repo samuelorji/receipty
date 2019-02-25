@@ -1,14 +1,15 @@
-package com.receipty.receipty.service
+package com.receipty.bantu.service
 
 import akka.actor.Props
 
-import com.receipty.receipty.core.db.mysql.cache.UserDbCache
-import com.receipty.receipty.service.UssdService.UssdRequest
-import com.receipty.receipty.service.test.TestServiceT
+import com.receipty._
+import com.receipty.bantu.core.db.mysql.cache.UserDbCache
+import com.receipty.bantu.service.test.TestServiceT
+import bantu.service.UssdService.UssdRequest
 
 class UssdServiceSpec extends TestServiceT{
 
- system.actorOf(UserDbCache.props)
+  system.actorOf(UserDbCache.props)
 
   val ussdService = system.actorOf(Props[UssdService])
   val unregisteredNumber = "+23490909009"

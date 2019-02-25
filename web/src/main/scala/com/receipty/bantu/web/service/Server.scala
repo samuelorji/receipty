@@ -1,4 +1,4 @@
-package com.receipty.receipty.web
+package com.receipty.bantu.web
 package service
 
 import akka.actor.ActorSystem
@@ -7,8 +7,8 @@ import akka.stream.ActorMaterializer
 
 import com.receipty._
 
-import receipty.core.config.ReceiptyConfig
-import receipty.core.db.mysql.cache.{ItemDbCache, UserDbCache}
+import bantu.core.config.ReceiptyConfig
+import bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 
 object Server extends App {
 

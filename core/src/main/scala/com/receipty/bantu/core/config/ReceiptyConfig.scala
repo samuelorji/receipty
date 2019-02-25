@@ -1,5 +1,4 @@
-package com.receipty.receipty.core
-package config
+package com.receipty.bantu.core.config
 
 import com.typesafe.config.ConfigFactory
 
