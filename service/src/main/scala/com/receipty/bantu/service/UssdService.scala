@@ -122,7 +122,7 @@ class UssdService extends Actor {
   }
 
   val provinceSelection =
-    s"1.) ${provinceMap(1)}\n" +
+      s"1.) ${provinceMap(1)}\n" +
       s"2.) ${provinceMap(2)}\n" +
       s"3.) ${provinceMap(3)}\n" +
       s"4.) ${provinceMap(4)}\n" +
@@ -161,11 +161,11 @@ class UssdService extends Actor {
                     response = showCounties(provinceNum)
                   } else {
                     val errorMsg = s"Invalid Entry $provinceEntry"
-                    response = s"END $errorMsg "
+                    response = s"END $errorMsg"
                   }
                 } catch {
                   case _: NumberFormatException =>
-                    response  = s"END Invalid Entry. please user numbers "
+                    response  = s"END Invalid Entry\n please use Numbers"
                 }
 
               case 2 =>
@@ -183,7 +183,7 @@ class UssdService extends Actor {
                 catch {
                   case _: NumberFormatException =>
                     val errorMsg = s"Invalid Entry"
-                    response     = s"END $errorMsg\n Please use Numbers "
+                    response     = s"END $errorMsg\n Please use Numbers"
                 }
 
               case 3 =>
@@ -193,38 +193,38 @@ class UssdService extends Actor {
                     response = "CON Please Confirm Password"
                   } else {
                     val errorMsg = s"Password should be 4 digits"
-                    response     = s"END Invalid Entry \n $errorMsg "
+                    response     = s"END Invalid Entry \n $errorMsg"
                   }
 
                 } catch {
                   case _: NumberFormatException =>
                     val errorMsg = s"Please use Numbers"
-                    response     = s"END Invalid Entry\n $errorMsg "
+                    response     = s"END Invalid Entry\n $errorMsg"
                 }
 
               case 4 =>
                 val password = entries(3)
                 if (password == entries(2)) {
                   //here we hash the users password and then input into database
-                  val pin = MessageDigest.getInstance("SHA-256").digest(password.getBytes).map("%02x".format(_)).mkString
+                  val pin  = MessageDigest.getInstance("SHA-256").digest(password.getBytes).map("%02x".format(_)).mkString
                   val user = UserDbEntry(
                     phoneNumber = req.phoneNumber,
-                    province = entries(0).toInt,
-                    county = entries(1).toInt,
-                    password = pin
+                    province    = entries(0).toInt,
+                    county      = entries(1).toInt,
+                    password    = pin
                   )
                   //create Messaging service here
                   val res = Await.result(ReceiptyMapper.insertUserIntoDb(user), 5 seconds)
                   if (res.rowsAffected > 0) {
-                    response = "END Registration Successful \nPlease Check your Messages for user Details "
+                    response = "END Registration Successful \nPlease Check your Messages for user Details"
                   } else {
-                    response = "END Registration Unsuccessful \n Please try registering again  "
+                    response = "END Registration Unsuccessful \n Please try registering again"
                   }
                 } else if (password.length != 4) {
                   response = "END Password should be 4 digits"
                 }
                 else {
-                  response = "END Passwords do not match "
+                  response = "END Passwords do not match"
                 }
             }
           }
