@@ -9,8 +9,8 @@ import akka.http.scaladsl.server.Directives.{extractRequest, formFields, path, p
 import akka.pattern.ask
 import akka.util.Timeout
 
-import com.receipty.bantu.service.UssdService
-import com.receipty.bantu.service.UssdService.UssdRequest
+import com.receipty.bantu.service.Ussd.UssdService
+import com.receipty.bantu.service.Ussd.UssdService.UssdRequest
 
 
 trait ReceiptyWebServiceT {
@@ -32,6 +32,7 @@ trait ReceiptyWebServiceT {
               //there should be a way to persist the session Id to the database for ech session Id
               complete((
                 ussdService ? UssdRequest(
+                  sessionId  = sessionid,
                 phoneNumber = phoneNumber.trim,
                 input       = input
               )).mapTo[String])

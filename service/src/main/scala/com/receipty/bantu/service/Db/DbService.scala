@@ -1,14 +1,13 @@
-package com.receipty.bantu.service
+package com.receipty.bantu.service.Db
 
-import scala.util.{ Failure, Success }
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
 
 import akka.actor.Actor
 
 import com.receipty._
-
-import bantu.core.db.mysql.mapper.ReceiptyMapper
-import bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
+import com.receipty.bantu.core.db.mysql.mapper.ReceiptyMapper
+import com.receipty.bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
 
 
 object DbService {

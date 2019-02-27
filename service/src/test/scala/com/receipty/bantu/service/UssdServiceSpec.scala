@@ -6,6 +6,7 @@ import com.receipty._
 import com.receipty.bantu.core.db.mysql.cache.UserDbCache
 import com.receipty.bantu.service.test.TestServiceT
 import bantu.service.UssdService.UssdRequest
+import com.receipty.bantu.service.Ussd.UssdService
 
 class UssdServiceSpec extends TestServiceT{
 
