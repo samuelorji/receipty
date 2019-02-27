@@ -20,7 +20,7 @@ trait ReceiptyWebServiceT {
   implicit def actorRefFactory: ActorSystem
 
   private val ussdService = createUssdService
-  def createUssdService   = actorRefFactory.actorOf(Props[UssdService])
+  def createUssdService   = actorRefFactory.actorOf(Props[UssdService] , System.currentTimeMillis().toString)
 
   lazy val routes = {
     path("ussd" / "callback") {
@@ -30,7 +30,8 @@ trait ReceiptyWebServiceT {
           extractRequest { _: HttpRequest =>
             formFields('sessionId, 'phoneNumber, 'text) { (sessionid, phoneNumber, input) =>
               //there should be a way to persist the session Id to the database for ech session Id
-              complete((createUssdService ? UssdRequest(
+              complete((
+                ussdService ? UssdRequest(
                 phoneNumber = phoneNumber.trim,
                 input       = input
               )).mapTo[String])
