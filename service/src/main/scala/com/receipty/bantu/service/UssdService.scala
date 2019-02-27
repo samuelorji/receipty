@@ -4,27 +4,28 @@ import java.security.MessageDigest
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.util.{ Failure, Success }
+import scala.util.{Failure, Success}
 
-import akka.actor.{ Actor, Props }
+import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 
 import com.receipty._
-
-import bantu.core.db.mysql.cache.{ ItemDbCache, UserDbCache }
+import bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 import bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
-
-import bantu.service.DbService.AddUser
+import bantu.service.DbService.{AddUser, AddUserResponse}
 
 object UssdService {
+
   case class UssdRequest(
-    phoneNumber: String,
-    input: String
-  )
+                          sessionID: String,
+                          phoneNumber: String,
+                          input: String
+                        )
+
 }
 
-class UssdService extends Actor {
+class UssdService extends Actor with ActorLogging {
   // this is the service that will check if the user exist or not and handle user registration
 
   private val countyMap =
@@ -39,7 +40,6 @@ class UssdService extends Actor {
 
   private val provinceMap =
     Map[Int, String](1 -> "Nairobi", 2 -> "Central", 3 -> "Eastern", 4 -> "Rift Valley", 5 -> "Nyanza", 6 -> "Western", 7 -> "Coast", 8 -> "North Eastern")
-
 
 
   private def showCounty(selection: Int): String = {
@@ -127,7 +127,7 @@ class UssdService extends Actor {
   }
 
   val provinceSelection =
-      s"1.) ${provinceMap(1)}\n" +
+    s"1.) ${provinceMap(1)}\n" +
       s"2.) ${provinceMap(2)}\n" +
       s"3.) ${provinceMap(3)}\n" +
       s"4.) ${provinceMap(4)}\n" +
@@ -152,33 +152,30 @@ class UssdService extends Actor {
           val response = "END You have been registered"
           currentSender ! response
         case None =>
-        //  New User
+          //  New User
           if (req.input.length < 1) {
             //here the app just started so user input is 0
-           val response = s"CON Welcome to Receipty\nTo continue with registration..\nPlease Select a province...\n ${provinceSelection}"
+            val response = s"CON Welcome to Receipty\nTo continue with registration..\nPlease Select a province...\n ${provinceSelection}"
             currentSender ! response
           } else {
-
-            val entries = req.input.split('*')
-
             //Add User
+            val entries = req.input.split('*')
             entries.length match {
-              case 1 => //the user just entered province number we show him county menu
+              case 1 =>
                 val provinceEntry = entries(0)
                 try {
                   val provinceNum = provinceEntry.toInt
                   if (provinceNum <= 8 && provinceNum != 0) {
-                   val response = showCounties(provinceNum)
+                    val response = showCounties(provinceNum)
                     currentSender ! response
                   } else {
                     val errorMsg = s"Invalid Entry $provinceEntry"
-
-                   val response = s"END $errorMsg "
+                    val response = s"END $errorMsg "
                     currentSender ! response
                   }
                 } catch {
                   case _: NumberFormatException =>
-                   val response  = s"END Invalid Entry. please user numbers "
+                    val response = s"END Invalid Entry. please user numbers "
                     currentSender ! response
 
                 }
@@ -189,11 +186,11 @@ class UssdService extends Actor {
                   val provinceEntry = entries(0).toInt
                   if (countyEntry > countyMap(provinceMap(provinceEntry)).length || countyEntry == 0) {
                     val errorMsg = s"Invalid Entry $countyEntry"
-                   val response     = s"END Invalid Entry $errorMsg"
+                    val response = s"END Invalid Entry $errorMsg"
                     currentSender ! response
                   } else {
                     val selectionPrefix = "CON Please Enter a 4 Digit Pin"
-                   val response            = selectionPrefix
+                    val response = selectionPrefix
                     currentSender ! response
                   }
                 }
@@ -201,7 +198,7 @@ class UssdService extends Actor {
                   case _: NumberFormatException =>
                     val errorMsg = s"Invalid Entry"
 
-                   val response     = s"END $errorMsg\n Please use Numbers "
+                    val response = s"END $errorMsg\n Please use Numbers "
                     currentSender ! response
 
                 }
@@ -210,12 +207,12 @@ class UssdService extends Actor {
                 try {
                   entries(2).toInt
                   if (entries(2).length == 4) {
-                   val response = "CON Please Confirm Password"
+                    val response = "CON Please Confirm Password"
                     currentSender ! response
                   } else {
                     val errorMsg = s"Password should be 4 digits"
 
-                   val response     = s"END Invalid Entry \n $errorMsg "
+                    val response = s"END Invalid Entry \n $errorMsg "
                     currentSender ! response
 
                   }
@@ -223,8 +220,7 @@ class UssdService extends Actor {
                 } catch {
                   case _: NumberFormatException =>
                     val errorMsg = s"Please use Numbers"
-
-                   val response     = s"END Invalid Entry\n $errorMsg "
+                    val response = s"END Invalid Entry\n $errorMsg "
                     currentSender ! response
 
                 }
@@ -233,28 +229,28 @@ class UssdService extends Actor {
                 val password = entries(3)
                 if (password == entries(2)) {
                   //here we hash the users password and then input into database
-                  val pin  = MessageDigest.getInstance("SHA-256").digest(password.getBytes).map("%02x".format(_)).mkString
+                  val pin = MessageDigest.getInstance("SHA-256").digest(password.getBytes).map("%02x".format(_)).mkString
                   val user = UserDbEntry(
                     phoneNumber = req.phoneNumber,
-                    province    = entries(0).toInt,
-                    county      = entries(1).toInt,
-                    password    = pin
+                    province = entries(0).toInt,
+                    county = entries(1).toInt,
+                    password = pin
                   )
 
-                  (db ? AddUser(user)).mapTo[Boolean] onComplete{
+                  (db ? AddUser(user)).mapTo[AddUserResponse] onComplete {
                     case Success(res) => res match {
-                      case true  =>
-                       val response = "END Registration Successful \nPlease Check your Messages for user Details "
+                      case AddUserResponse(true, _) =>
+                        log.info("Successful registration for sessionId:{}, phoneNumber:{}, input:{}", req.sessionID, req.phoneNumber, req.input)
+                        val response = "END Registration Successful \nPlease Check your Messages for user Details "
                         currentSender ! response
-
-                      case false =>
-                       val response = "END Registration Unsuccessful \n Please try registering again  "
+                      case AddUserResponse(false, msg) =>
+                        log.error("UnSuccessful registration for sessionId:{}, phoneNumber:{}, input:{}, Error : {} ", req.sessionID, req.phoneNumber, req.input, msg)
+                        val response = "END Registration Unsuccessful \n Please try registering again  "
                         currentSender ! response
-
                     }
                     case Failure(ex) =>
-                      println(ex)
-                     val response = "END Registration Unsuccessful \n Please try registering again  "
+                      log.error("UnSuccessful registration for sessionId:{}, phoneNumber:{}, input:{}, Error : {} ", req.sessionID, req.phoneNumber, req.input, ex.getMessage)
+                      val response = "END Registration Unsuccessful \n Please try registering again  "
                       currentSender ! response
 
                   }
@@ -265,17 +261,14 @@ class UssdService extends Actor {
                 }
                 else {
 
-                val response = "END Passwords do not match "
+                  val response = "END Passwords do not match "
                   currentSender ! response
 
                 }
             }
           }
-
       }
-
   }
-
 }
 
 

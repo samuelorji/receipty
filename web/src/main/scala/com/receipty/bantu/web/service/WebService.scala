@@ -32,8 +32,9 @@ trait ReceiptyWebServiceT {
               //there should be a way to persist the session Id to the database for ech session Id
               complete((
                 ussdService ? UssdRequest(
-                phoneNumber = phoneNumber.trim,
-                input       = input
+                  sessionID   = sessionid,
+                  phoneNumber = phoneNumber.trim,
+                  input       = input
               )).mapTo[String])
             }
           }

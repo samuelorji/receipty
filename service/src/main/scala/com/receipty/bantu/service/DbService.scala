@@ -13,6 +13,7 @@ import bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
 
 object DbService {
   case class AddUser(user: UserDbEntry)
+  case class AddUserResponse(status : Boolean , msg : String)
 }
 
 class DbService extends Actor {
@@ -24,14 +25,15 @@ class DbService extends Actor {
       val currentSender = sender()
       ReceiptyMapper.insertUserIntoDb(req.user) onComplete {
         case Success(qr) => if (qr.rowsAffected > 0) {
-          currentSender ! true
+
+          currentSender ! AddUserResponse(true, qr.statusMessage)
         } else {
 
-          currentSender ! false
+          currentSender ! AddUserResponse(false, qr.statusMessage)
+
         }
         case Failure(ex) =>
-          println(ex)
-          currentSender ! false
+          currentSender ! AddUserResponse(false, ex.getMessage)
       }
 
 
