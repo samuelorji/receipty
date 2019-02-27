@@ -2,15 +2,20 @@ package com.receipty.bantu.service
 
 import java.security.MessageDigest
 
-import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.util.{ Failure, Success }
 
-import akka.actor.Actor
+import akka.actor.{ Actor, Props }
+import akka.pattern.ask
+import akka.util.Timeout
 
 import com.receipty._
-import com.receipty.bantu.core.db.mysql.mapper.ReceiptyMapper
-import bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
-import com.receipty.bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
+
+import bantu.core.db.mysql.cache.{ ItemDbCache, UserDbCache }
+import bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
+
+import bantu.service.DbService.AddUser
 
 object UssdService {
   case class UssdRequest(
@@ -35,7 +40,7 @@ class UssdService extends Actor {
   private val provinceMap =
     Map[Int, String](1 -> "Nairobi", 2 -> "Central", 3 -> "Eastern", 4 -> "Rift Valley", 5 -> "Nyanza", 6 -> "Western", 7 -> "Coast", 8 -> "North Eastern")
 
-  private var response = ""
+
 
   private def showCounty(selection: Int): String = {
     def prefix(prov: String) = s"Please Select Your County under ${prov}\n"
@@ -43,8 +48,8 @@ class UssdService extends Actor {
     selection match {
       case 1 =>
         val counties = countyMap(provinceMap(1))
-        response = prefix(provinceMap(1)) + s"1.) ${counties(0)}"
-        response
+        prefix(provinceMap(1)) + s"1.) ${counties(0)}"
+
       case 2 =>
         val counties = countyMap(provinceMap(2))
         val string = createCountyMenu(counties)._1
@@ -131,6 +136,9 @@ class UssdService extends Actor {
       s"7.) ${provinceMap(7)}\n" +
       s"8.) ${provinceMap(8)}"
 
+  val db = context.actorOf(Props[DbService])
+  implicit val timeout = Timeout(5 seconds)
+
   def receive = {
     case req: UssdRequest =>
       val currentSender = sender()
@@ -141,12 +149,14 @@ class UssdService extends Actor {
         case Some(user) =>
           //User wants to make a sale
           val userItems = ItemDbCache.getUserItems(user.id)
-          response = "END You have been registered"
+          val response = "END You have been registered"
+          currentSender ! response
         case None =>
-          //New User
+        //  New User
           if (req.input.length < 1) {
             //here the app just started so user input is 0
-            response = s"CON Welcome to Receipty\nTo continue with registration..\nPlease Select a province...\n ${provinceSelection}"
+           val response = s"CON Welcome to Receipty\nTo continue with registration..\nPlease Select a province...\n ${provinceSelection}"
+            currentSender ! response
           } else {
 
             val entries = req.input.split('*')
@@ -158,14 +168,19 @@ class UssdService extends Actor {
                 try {
                   val provinceNum = provinceEntry.toInt
                   if (provinceNum <= 8 && provinceNum != 0) {
-                    response = showCounties(provinceNum)
+                   val response = showCounties(provinceNum)
+                    currentSender ! response
                   } else {
                     val errorMsg = s"Invalid Entry $provinceEntry"
-                    response = s"END $errorMsg"
+
+                   val response = s"END $errorMsg "
+                    currentSender ! response
                   }
                 } catch {
                   case _: NumberFormatException =>
-                    response  = s"END Invalid Entry\n please use Numbers"
+                   val response  = s"END Invalid Entry. please user numbers "
+                    currentSender ! response
+
                 }
 
               case 2 =>
@@ -174,32 +189,44 @@ class UssdService extends Actor {
                   val provinceEntry = entries(0).toInt
                   if (countyEntry > countyMap(provinceMap(provinceEntry)).length || countyEntry == 0) {
                     val errorMsg = s"Invalid Entry $countyEntry"
-                    response     = s"END Invalid Entry $errorMsg"
+                   val response     = s"END Invalid Entry $errorMsg"
+                    currentSender ! response
                   } else {
                     val selectionPrefix = "CON Please Enter a 4 Digit Pin"
-                    response            = selectionPrefix
+                   val response            = selectionPrefix
+                    currentSender ! response
                   }
                 }
                 catch {
                   case _: NumberFormatException =>
                     val errorMsg = s"Invalid Entry"
-                    response     = s"END $errorMsg\n Please use Numbers"
+
+                   val response     = s"END $errorMsg\n Please use Numbers "
+                    currentSender ! response
+
                 }
 
               case 3 =>
                 try {
                   entries(2).toInt
                   if (entries(2).length == 4) {
-                    response = "CON Please Confirm Password"
+                   val response = "CON Please Confirm Password"
+                    currentSender ! response
                   } else {
                     val errorMsg = s"Password should be 4 digits"
-                    response     = s"END Invalid Entry \n $errorMsg"
+
+                   val response     = s"END Invalid Entry \n $errorMsg "
+                    currentSender ! response
+
                   }
 
                 } catch {
                   case _: NumberFormatException =>
                     val errorMsg = s"Please use Numbers"
-                    response     = s"END Invalid Entry\n $errorMsg"
+
+                   val response     = s"END Invalid Entry\n $errorMsg "
+                    currentSender ! response
+
                 }
 
               case 4 =>
@@ -213,26 +240,42 @@ class UssdService extends Actor {
                     county      = entries(1).toInt,
                     password    = pin
                   )
-                  //create Messaging service here
-                  val res = Await.result(ReceiptyMapper.insertUserIntoDb(user), 5 seconds)
-                  if (res.rowsAffected > 0) {
-                    response = "END Registration Successful \nPlease Check your Messages for user Details"
-                  } else {
-                    response = "END Registration Unsuccessful \n Please try registering again"
+
+                  (db ? AddUser(user)).mapTo[Boolean] onComplete{
+                    case Success(res) => res match {
+                      case true  =>
+                       val response = "END Registration Successful \nPlease Check your Messages for user Details "
+                        currentSender ! response
+
+                      case false =>
+                       val response = "END Registration Unsuccessful \n Please try registering again  "
+                        currentSender ! response
+
+                    }
+                    case Failure(ex) =>
+                      println(ex)
+                     val response = "END Registration Unsuccessful \n Please try registering again  "
+                      currentSender ! response
+
                   }
-                } else if (password.length != 4) {
-                  response = "END Password should be 4 digits"
+                }
+                else if (password.length != 4) {
+                  val response = "END Password should be 4 digits"
+                  currentSender ! response
                 }
                 else {
-                  response = "END Passwords do not match"
+
+                val response = "END Passwords do not match "
+                  currentSender ! response
+
                 }
             }
           }
 
       }
 
-      currentSender ! response
   }
 
 }
+
 
