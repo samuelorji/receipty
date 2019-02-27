@@ -9,8 +9,8 @@ import akka.http.scaladsl.server.Directives.{extractRequest, formFields, path, p
 import akka.pattern.ask
 import akka.util.Timeout
 
-import com.receipty.bantu.service.UssdService
-import com.receipty.bantu.service.UssdService.UssdRequest
+import com.receipty.bantu.service.Ussd.UssdService
+import com.receipty.bantu.service.Ussd.UssdService.UssdRequest
 
 
 trait ReceiptyWebServiceT {
@@ -35,6 +35,7 @@ trait ReceiptyWebServiceT {
                   sessionID   = sessionid,
                   phoneNumber = phoneNumber.trim,
                   input       = input
+
               )).mapTo[String])
             }
           }

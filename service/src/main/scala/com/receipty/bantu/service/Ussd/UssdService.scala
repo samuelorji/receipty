@@ -1,4 +1,4 @@
-package com.receipty.bantu.service
+package com.receipty.bantu.service.Ussd
 
 import java.security.MessageDigest
 
@@ -7,21 +7,24 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 
 import com.receipty._
-import bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
-import bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
-import bantu.service.DbService.{AddUser, AddUserResponse}
+import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
+import com.receipty.bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
+import com.receipty.bantu.service.Db.DbService
+import com.receipty.bantu.service.Db.DbService.{AddUser, AddUserResponse}
+
 
 object UssdService {
 
   case class UssdRequest(
-                          sessionID: String,
-                          phoneNumber: String,
-                          input: String
-                        )
+    sessionID: String,
+    phoneNumber: String,
+    input: String
+  )
 
 }
 
