@@ -152,7 +152,7 @@ class UssdService extends Actor with ActorLogging {
     case req: UssdRequest =>
       val currentSender = sender()
 
-      val userExist = UserDbCache.checkIfUserExixsts(req.phoneNumber.substring(1))
+      val userExist = UserDbCache.checkIfUserExixsts(req.phoneNumber)
 
       userExist match {
         case Some(user) =>
@@ -239,6 +239,7 @@ class UssdService extends Actor with ActorLogging {
                 if (password == entries(2)) {
                   //here we hash the users password and then input into database
                   val pin = MessageDigest.getInstance("SHA-256").digest(password.getBytes).map("%02x".format(_)).mkString
+                  println(s"user phone number is ${req.phoneNumber}")
                   val user = UserDbEntry(
                     phoneNumber = req.phoneNumber,
                     province    = entries(0).toInt,
@@ -257,11 +258,13 @@ class UssdService extends Actor with ActorLogging {
                         )
                         currentSender ! response
                       case AddUserResponse(false, msg) =>
+                        println(msg)
                         log.error("UnSuccessful registration for sessionId:{}, phoneNumber:{}, input:{}, Error : {} ", req.sessionID, req.phoneNumber, req.input, msg)
                         val response = "END Registration Unsuccessful \n Please try registering again  "
                         currentSender ! response
                     }
                     case Failure(ex) =>
+                      println(ex)
                       log.error("UnSuccessful registration for sessionId:{}, phoneNumber:{}, input:{}, Error : {} ", req.sessionID, req.phoneNumber, req.input, ex.getMessage)
                       val response = "END Registration Unsuccessful \n Please try registering again  "
                       currentSender ! response

@@ -7,7 +7,7 @@ import akka.actor.{Actor, ActorLogging}
 
 import com.receipty._
 import com.receipty.bantu.core.db.mysql.mapper.ReceiptyMapper
-import com.receipty.bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
+import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
 
 
 object DbService {
@@ -15,6 +15,9 @@ object DbService {
   case class AddUserResponse(status : Boolean , msg : String)
   case class GetUserId(phoneNumber : String)
   case class GetUserIdResponse(status : Boolean, id : Int)
+
+  case class AddItems(items : List[ItemDbEntry])
+  case class AddItemsResponse(status : Boolean , msg : String)
 }
 
 class DbService extends Actor with ActorLogging{
@@ -37,6 +40,26 @@ class DbService extends Actor with ActorLogging{
         }
         case Failure(ex) =>
           currentSender ! AddUserResponse(
+            status = false,
+            msg    = ex.getMessage)
+      }
+
+    case req : AddItems =>
+      val currentSender = sender()
+      ReceiptyMapper.addItemsIntoDb(req.items) onComplete{
+        case Success(qr) => if (qr.rowsAffected > 0) {
+          currentSender ! AddItemsResponse(
+            status   = true,
+            msg      = qr.statusMessage
+          )
+        } else {
+          currentSender ! AddItemsResponse(
+            status = false,
+            msg    = qr.statusMessage
+          )
+        }
+        case Failure(ex) =>
+          currentSender ! AddItemsResponse(
             status = false,
             msg    = ex.getMessage)
       }

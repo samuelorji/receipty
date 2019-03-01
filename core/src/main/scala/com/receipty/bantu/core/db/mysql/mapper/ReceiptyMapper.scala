@@ -8,12 +8,12 @@ import com.github.mauricio.async.db.RowData
 import com.receipty._
 import com.receipty.bantu.core.db.mysql.ReceiptyMySqlDb
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
-import org.joda.time.LocalDateTime
+import org.joda.time.{DateTime, LocalDateTime}
 
 object ReceiptyMapper extends ReceiptyMapperT
 private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
 
-  val FetchAllUSersSql  = "SELECT * FROM user"
+  val FetchAllUsersSql  = "SELECT * FROM user"
   val fetchAllItemsSql  = "SELECT * FROM item"
 
   def fetchAllItems: Future[List[ItemDbEntry]] = {
@@ -28,7 +28,7 @@ private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
 
   def fetchAllUsers : Future[List[UserDbEntry]] = {
 
-    pool.sendPreparedStatement(FetchAllUSersSql) map{ queryResult =>
+    pool.sendPreparedStatement(FetchAllUsersSql) map{ queryResult =>
       queryResult .rows match {
         case Some(rows) => rows.toList.map(x => rowToUserModel(x))
         case None => List()
@@ -36,8 +36,23 @@ private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
     }
   }
 
+
+
+  def addItemsIntoDb(items : List[ItemDbEntry]) = {
+    val query = s"INSERT INTO item (description,owner) VALUES " + items.foldLeft(("",1)){
+      case ((str,ind), item) =>
+        if(ind < items.length) {
+          (str + s"('${item.description}',${item.owner}),",ind+1)
+        }else{
+          (str + s"('${item.description}',${item.owner});",ind+1)
+        }
+    }._1
+    pool.sendPreparedStatement(query)
+
+  }
+
   def insertUserIntoDb(user : UserDbEntry) = {
-    val query = s"INSERT INTO user (phone,password,province,county) VALUES (${user.phoneNumber},'${user.password}',${user.province},${user.county})"
+    val query = s"INSERT INTO user (phone,password,province,county) VALUES ('${user.phoneNumber}','${user.password}',${user.province},${user.county})"
     pool.sendPreparedStatement(query)
   }
 
