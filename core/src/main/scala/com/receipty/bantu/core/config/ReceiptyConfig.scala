@@ -23,4 +23,11 @@ object ReceiptyConfig {
   val host = config.getString("bantu.interface.web.host")
   val port = config.getInt("bantu.interface.web.port")
 
+  //Broker URL
+  val MessageEndpoint = config.getString("bantu.services.messaging.endpoint")
+
+  //credentials
+  val apikey   = config.getString("bantu.services.credentials.apikey")
+  val username = config.getString("bantu.services.credentials.username")
+
 }

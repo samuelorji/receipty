@@ -2,6 +2,7 @@ package com.receipty.bantu.core.db.mysql.mapper
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 import com.github.mauricio.async.db.RowData
 import com.receipty._
@@ -38,6 +39,18 @@ private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
   def insertUserIntoDb(user : UserDbEntry) = {
     val query = s"INSERT INTO user (phone,password,province,county) VALUES (${user.phoneNumber},'${user.password}',${user.province},${user.county})"
     pool.sendPreparedStatement(query)
+  }
+
+  def findUserById(phoneNumber : String) = {
+
+    val query = s"SELECT * FROM user where phone = '$phoneNumber'"
+    pool.sendPreparedStatement(query)map { queryResult =>
+      queryResult.rows match {
+        case Some(rows) => Some(rowToUserModel(rows.toList.head))
+        case None       => None
+      }
+
+    }
   }
 
    def rowToItemModel(row: RowData): ItemDbEntry = {

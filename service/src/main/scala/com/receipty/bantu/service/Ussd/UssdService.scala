@@ -11,21 +11,22 @@ import akka.actor.{Actor, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 
+import com.github.mauricio.async.db.mysql.message.client.SendLongDataMessage
 import com.receipty._
 import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
 import com.receipty.bantu.service.Db.DbService
 import com.receipty.bantu.service.Db.DbService.{AddUser, AddUserResponse}
+import com.receipty.bantu.service.Messaging.MessagingService
+import com.receipty.bantu.service.Messaging.MessagingService.SendMessageToUser
 
 
 object UssdService {
-
   case class UssdRequest(
     sessionID: String,
     phoneNumber: String,
     input: String
   )
-
 }
 
 class UssdService extends Actor with ActorLogging {
@@ -139,7 +140,12 @@ class UssdService extends Actor with ActorLogging {
       s"7.) ${provinceMap(7)}\n" +
       s"8.) ${provinceMap(8)}"
 
-  val db = context.actorOf(Props[DbService])
+  val dbService        = createDbService
+  def createDbService  = context.actorOf(Props[DbService])
+
+  val messagingService        = createMessagingService
+  def createMessagingService  = context.actorOf(Props[MessagingService])
+
   implicit val timeout = Timeout(5 seconds)
 
   def receive = {
@@ -235,16 +241,20 @@ class UssdService extends Actor with ActorLogging {
                   val pin = MessageDigest.getInstance("SHA-256").digest(password.getBytes).map("%02x".format(_)).mkString
                   val user = UserDbEntry(
                     phoneNumber = req.phoneNumber,
-                    province = entries(0).toInt,
-                    county = entries(1).toInt,
-                    password = pin
+                    province    = entries(0).toInt,
+                    county      = entries(1).toInt,
+                    password    = pin
                   )
 
-                  (db ? AddUser(user)).mapTo[AddUserResponse] onComplete {
+                  (dbService ? AddUser(user)).mapTo[AddUserResponse] onComplete {
                     case Success(res) => res match {
                       case AddUserResponse(true, _) =>
                         log.info("Successful registration for sessionId:{}, phoneNumber:{}, input:{}", req.sessionID, req.phoneNumber, req.input)
                         val response = "END Registration Successful \nPlease Check your Messages for user Details "
+                        messagingService ! SendMessageToUser(
+                          phoneNumber = req.phoneNumber,
+                          sessionId   = req.sessionID
+                        )
                         currentSender ! response
                       case AddUserResponse(false, msg) =>
                         log.error("UnSuccessful registration for sessionId:{}, phoneNumber:{}, input:{}, Error : {} ", req.sessionID, req.phoneNumber, req.input, msg)
@@ -263,7 +273,6 @@ class UssdService extends Actor with ActorLogging {
                   currentSender ! response
                 }
                 else {
-
                   val response = "END Passwords do not match "
                   currentSender ! response
 

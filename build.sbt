@@ -14,16 +14,17 @@ lazy val bantu = (project in file("."))
 lazy val core = (project in file("core")).
   settings(
     libraryDependencies ++= Seq (
-      "com.typesafe.akka"   %% "akka-actor"      % akkaVersion,
-      "com.typesafe.akka"   %% "akka-slf4j"      % akkaVersion,
-      "com.typesafe.akka"   %% "akka-http"       % akkaHttpVersion,
-      "com.typesafe.akka"   %% "akka-stream"     % akkaVersion,
-      "ch.qos.logback"      %  "logback-classic" % "1.2.3",
-      "ch.qos.logback"      %  "logback-core"    % "1.2.1",
-      "commons-daemon"      %  "commons-daemon"  % "1.1.0",
-      "com.github.mauricio" %% "mysql-async"     % "0.2.21",
-      "com.typesafe.akka"   %% "akka-testkit"    % akkaVersion      % Test,
-      "org.scalatest"       %% "scalatest"       % scalaTestVersion % Test
+      "com.typesafe.akka"   %% "akka-actor"           % akkaVersion,
+      "com.typesafe.akka"   %% "akka-slf4j"           % akkaVersion,
+      "com.typesafe.akka"   %% "akka-http"            % akkaHttpVersion,
+      "com.typesafe.akka"   %% "akka-http-spray-json" % akkaHttpVersion,
+      "com.typesafe.akka"   %% "akka-stream"          % akkaVersion,
+      "ch.qos.logback"      %  "logback-classic"      % "1.2.3",
+      "ch.qos.logback"      %  "logback-core"         % "1.2.1",
+      "commons-daemon"      %  "commons-daemon"       % "1.1.0",
+      "com.github.mauricio" %% "mysql-async"          % "0.2.21",
+      "com.typesafe.akka"   %% "akka-testkit"         % akkaVersion      % Test,
+      "org.scalatest"       %% "scalatest"            % scalaTestVersion % Test
     )
   )
 

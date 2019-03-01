@@ -25,7 +25,6 @@ trait ReceiptyWebServiceT {
   lazy val routes = {
     path("ussd" / "callback") {
       post {
-
         logRequest("ussd:callback", Logging.InfoLevel) {
           extractRequest { _: HttpRequest =>
             formFields('sessionId, 'phoneNumber, 'text) { (sessionid, phoneNumber, input) =>
@@ -35,7 +34,6 @@ trait ReceiptyWebServiceT {
                   sessionID   = sessionid,
                   phoneNumber = phoneNumber.trim,
                   input       = input
-
               )).mapTo[String])
             }
           }
