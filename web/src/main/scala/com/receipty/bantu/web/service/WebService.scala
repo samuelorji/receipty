@@ -9,6 +9,8 @@ import akka.http.scaladsl.server.Directives.{extractRequest, formFields, path, p
 import akka.pattern.ask
 import akka.util.Timeout
 
+import com.receipty.bantu.service.Messaging.MessagingService
+import com.receipty.bantu.service.Messaging.MessagingService.CustomerMessage
 import com.receipty.bantu.service.Ussd.UssdService
 import com.receipty.bantu.service.Ussd.UssdService.UssdRequest
 
@@ -20,7 +22,11 @@ trait ReceiptyWebServiceT {
   implicit def actorRefFactory: ActorSystem
 
   private val ussdService = createUssdService
-  def createUssdService   = actorRefFactory.actorOf(Props[UssdService] , System.currentTimeMillis().toString)
+  def createUssdService   = actorRefFactory.actorOf(Props[UssdService])
+
+  private val messagingService = createMessagingService
+  def createMessagingService        = actorRefFactory.actorOf(Props[MessagingService])
+
 
   lazy val routes = {
     path("ussd" / "callback") {
@@ -35,6 +41,23 @@ trait ReceiptyWebServiceT {
                   phoneNumber = phoneNumber.trim,
                   input       = input
               )).mapTo[String])
+            }
+          }
+        }
+      }
+    } ~ {
+      path("messaging" / "callback"){
+        post {
+          logRequest("messaging:callback",Logging.InfoLevel){
+            entity(as[String]){msg =>
+              println(msg)
+
+              messagingService ! CustomerMessage(
+                msg = msg ,
+                phone = "23499090"
+              )
+              complete(StatusCodes.OK)
+
             }
           }
         }

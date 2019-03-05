@@ -21,7 +21,7 @@ object MessagingService {
     sessionId: String ,
     phoneNumber : String
   )
-  case class Rec(msg: String,phone : String)
+  case class CustomerMessage(msg: String,phone : String)
 }
 
 class MessagingService extends Actor with ActorLogging{
@@ -62,15 +62,15 @@ class MessagingService extends Actor with ActorLogging{
           log.error("Error Finding user info for user with phoneNumber : {}, sessionId : {}, Error : {}",req.phoneNumber,req.sessionId,ex.getMessage)
       }
 
-    case req : Rec =>
+    case req : CustomerMessage =>
       //TODO ...this should contain detail from registered user for adding items or any other complaint
       //TODO a good format should be either ADD# or HELP#  or any prompt with a # separator
 
     val separator = '#'
       val entries = req.msg.split(separator)
 
-      entries(0) match {
-        case "ADD" =>
+      entries(0).toLowerCase match {
+        case "add" =>
           //now add items from entries(1) to end
           val userexist = UserDbCache.checkIfUserExixsts(req.phone)
           userexist match {
@@ -78,12 +78,12 @@ class MessagingService extends Actor with ActorLogging{
               val numItems = entries.length - 1
              val items =  entries.foldLeft(List.empty[ItemDbEntry]){
                 case (list, entry) =>
-                  if(entry.contains("ADD") || entry.contains("HELP")){
+                  if(entry.toLowerCase.contains("add") || entry.toLowerCase.contains("help")){
                     list
                   }else{
                     val item = ItemDbEntry(
                       id          = 0,
-                      description = entry ,
+                      description = entry.trim ,
                       owner       = user.id,
                       added       = ""
                     )
@@ -95,14 +95,14 @@ class MessagingService extends Actor with ActorLogging{
                case Success(res) => res match {
                  case AddItemsResponse(true, _) =>
                       //TODO ....send message to user that he/she has successfully added items
-                   log.error(s"Successfully added items message to user : phone :{} ",req.phone)
+                   log.info(s"Successfully added items message to user : phone :{} ",req.phone)
 
                  case AddItemsResponse(false,msg) =>
 
-                   log.error(s"Could Not send Successfully added items message to user : phone :{} reason :{}",req.phone, msg)
+                   log.error(s"Could Not  Successfully added items for user : phone :{} reason :{}",req.phone, msg)
                }
                case Failure(ex) =>
-                 log.error(s"Could Not send Successfully added items message to user : phone :{} error  :{}",req.phone, ex.getMessage)
+                 log.error(s"Could Not Successfully added items for user : phone :{} error  :{}",req.phone, ex.getMessage)
              }
 
               //now tell Db Service to put these items in the DB
@@ -111,7 +111,7 @@ class MessagingService extends Actor with ActorLogging{
           }
 
 
-        case "HELP" =>
+        case "help" =>
           //handle help cases
 
         case _ => //TODO ...send message to user that entry is incorrect and they should follow protocol
