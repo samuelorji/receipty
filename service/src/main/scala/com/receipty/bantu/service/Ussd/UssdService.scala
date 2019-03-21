@@ -184,7 +184,7 @@ class UssdService extends Actor with ActorLogging {
                   }
                 } catch {
                   case _: NumberFormatException =>
-                    val response = s"END Invalid Entry. please user numbers "
+                    val response = s"END Invalid Entry. please use numbers "
                     currentSender ! response
 
                 }

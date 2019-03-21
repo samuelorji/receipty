@@ -3,12 +3,10 @@ package com.receipty.bantu.service.Messaging
 import scala.util.{Failure, Success}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
-
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-
-import com.receipty.bantu.core.db.mysql.cache.UserDbCache
+import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.ItemDbEntry
 import com.receipty.bantu.service.Db.DbService
 import com.receipty.bantu.service.Db.DbService.{AddItems, AddItemsResponse, GetUserId, GetUserIdResponse}
@@ -41,6 +39,7 @@ class MessagingService extends Actor with ActorLogging{
   def receive = {
     case req: SendMessageToUser =>
       //first find user Id from
+      log.info(s"processing request $req")
       (dbService ? GetUserId(
         phoneNumber  = req.phoneNumber.substring(1)
       )).mapTo[GetUserIdResponse] onComplete{
@@ -48,9 +47,11 @@ class MessagingService extends Actor with ActorLogging{
           case GetUserIdResponse(true, id) =>
             if(id != 0){
               //now send user message
+              val msg      = s"Welcome To Receipty , Your user Id is ${id}, To add items, Life sucks "
               messageGateway ! SendMessage(
                 id          = id,
-                phoneNumber = req.phoneNumber
+                phoneNumber = req.phoneNumber,
+                msg         = msg
               )
             }else{
               log.error(s"Could not fetch data for user: phone :{},sessionId:{}",req.phoneNumber, req.sessionId)
@@ -61,6 +62,7 @@ class MessagingService extends Actor with ActorLogging{
         case Failure(ex) =>
           log.error("Error Finding user info for user with phoneNumber : {}, sessionId : {}, Error : {}",req.phoneNumber,req.sessionId,ex.getMessage)
       }
+
 
     case req : CustomerMessage =>
       //TODO ...this should contain detail from registered user for adding items or any other complaint
@@ -76,34 +78,62 @@ class MessagingService extends Actor with ActorLogging{
           userexist match {
             case Some(user) =>
               val numItems = entries.length - 1
-             val items =  entries.foldLeft(List.empty[ItemDbEntry]){
-                case (list, entry) =>
-                  if(entry.toLowerCase.contains("add") || entry.toLowerCase.contains("help")){
-                    list
-                  }else{
-                    val item = ItemDbEntry(
-                      id          = 0,
-                      description = entry.trim ,
-                      owner       = user.id,
-                      added       = ""
-                    )
-                     list :+ item
-                  }
-              }
+              if(numItems <= 10) {
+                val items = entries.foldLeft(List.empty[ItemDbEntry]) {
+                  case (list, entry) =>
+                    if (entry.toLowerCase.contains("add") || entry.toLowerCase.contains("help")) {
+                      list
+                    } else {
+                      val item = ItemDbEntry(
+                        id = 0,
+                        description = entry.trim,
+                        owner = user.id,
+                        added = ""
+                      )
+                      list :+ item
+                    }
+                }
 
-             (dbService ? AddItems(items)).mapTo[AddItemsResponse] onComplete{
-               case Success(res) => res match {
-                 case AddItemsResponse(true, _) =>
+                (dbService ? AddItems(items)).mapTo[AddItemsResponse] onComplete {
+                  case Success(res) => res match {
+                    case AddItemsResponse(true, _) =>
                       //TODO ....send message to user that he/she has successfully added items
-                   log.info(s"Successfully added items message to user : phone :{} ",req.phone)
+                      log.info(s"Successfully added items message to user : phone :{} ", req.phone)
+                      val msg = s"Succesfully added $numItems items"
+                      messageGateway ! SendMessage(
+                        id          = user.id,
+                        phoneNumber = user.phoneNumber,
+                        msg         = msg
+                      )
 
-                 case AddItemsResponse(false,msg) =>
+                    case AddItemsResponse(false, err) =>
 
-                   log.error(s"Could Not  Successfully added items for user : phone :{} reason :{}",req.phone, msg)
-               }
-               case Failure(ex) =>
-                 log.error(s"Could Not Successfully added items for user : phone :{} error  :{}",req.phone, ex.getMessage)
-             }
+                      val msg = s"ERROR:\nCould not add items, please retry"
+                      messageGateway ! SendMessage(
+                        id          = user.id,
+                        phoneNumber = user.phoneNumber,
+                        msg         = msg
+                      )
+                      log.error(s"Could Not  Successfully added items for user : phone :{} error :{}", req.phone, err)
+                  }
+                  case Failure(ex) =>
+                    val msg = s"ERROR:\nCould not add items, please retry"
+                    messageGateway ! SendMessage(
+                      id          = user.id,
+                      phoneNumber = user.phoneNumber,
+                      msg         = msg
+                    )
+                    log.error(s"Could Not Successfully added items for user : phone :{} error  :{}", req.phone, ex.getMessage)
+                }
+              }else{
+                //TODO send to user that number of items too much
+                val msg = s"ERROR:\nHello User ${user.id}, Number of items to add is more than 10"
+                messageGateway ! SendMessage(
+                  id          = user.id,
+                  phoneNumber = user.phoneNumber,
+                  msg         = msg
+                )
+              }
 
               //now tell Db Service to put these items in the DB
 

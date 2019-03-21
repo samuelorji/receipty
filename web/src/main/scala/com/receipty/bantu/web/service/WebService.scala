@@ -51,10 +51,9 @@ trait ReceiptyWebServiceT {
           logRequest("messaging:callback",Logging.InfoLevel){
             entity(as[String]){msg =>
               println(msg)
-
               messagingService ! CustomerMessage(
-                msg = msg ,
-                phone = "23499090"
+                msg = "ADD#Pick and peel # fried fish #something simple #bread and beans # fried fish # fried fish # fried fish # fried fish # fried fish # fried fish # fried fish # fried fish # fried fish # fried fish" ,
+                phone = "+2348112172624"
               )
               complete(StatusCodes.OK)
 

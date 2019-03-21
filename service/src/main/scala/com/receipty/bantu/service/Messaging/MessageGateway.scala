@@ -12,7 +12,7 @@ import com.receipty.bantu.service.Messaging.MessageGateway.SendMessage
 import com.receipty.bantu.service.util.HttpClient
 
 object MessageGateway {
-  case class SendMessage(id : Int, phoneNumber : String)
+  case class SendMessage(id : Int, phoneNumber : String, msg : String)
 }
 private[Messaging] class MessageGateway extends Actor
   with ActorLogging
@@ -22,13 +22,13 @@ private[Messaging] class MessageGateway extends Actor
   def receive = {
 
     case req : SendMessage =>
-      val msg      = s"Welcome To Receipty , Your user Id is ${req.id}, To add items, Life sucks "
+
       val response = for {
       resp <- makeHttpRequest(
         HttpRequest(
         HttpMethods.POST,
         uri      = ReceiptyConfig.MessageEndpoint,
-        entity   = FormData("username" -> ReceiptyConfig.username,"to" -> req.phoneNumber,"message" -> msg).toEntity(HttpCharsets.`UTF-8`)
+        entity   = FormData("username" -> ReceiptyConfig.username,"to" -> req.phoneNumber,"message" -> req.msg).toEntity(HttpCharsets.`UTF-8`)
        ).withHeaders(List(
           RawHeader("apikey", ReceiptyConfig.apikey),
           RawHeader("Content-Type", "application/x-www-form-urlencoded")
