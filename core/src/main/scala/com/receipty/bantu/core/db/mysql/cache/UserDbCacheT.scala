@@ -17,22 +17,28 @@ object ItemDbCache extends ItemDbCacheT
 
 private [cache] trait ItemDbCacheT extends MySqlDbCacheManagerT[ItemDbEntry]{
 
-  def getUserItems(uid : Int) = itemMap.values.toList.filter(_.id == uid)
+  def getUserItems(uid : Int) = itemMap.getOrElse(uid,List[ItemDbEntry]())
 
   override def setEntries(x: List[ItemDbEntry]): Unit = {
 
-    setItemMap(x.foldLeft(Map[Int, ItemDbEntry]()) {
+    setItemMap(x.foldLeft(Map[Int, List[ItemDbEntry]]()) {
       case (l, entry) => l.updated(
-        entry.id, entry
+//        if(l.get(entry).isDefined){
+//          entry.id, l(entry.id) :+ entry
+//        }else{
+//          entry.id, entry
+//        }
+        entry.owner , x.filter(_.owner == entry.owner)
       )
-    }
+     }
     )
   }
 
   def props = Props(classOf[ItemDbCache],this)
-  private var itemMap = Map[Int/* item Id */, ItemDbEntry /* Item */]()
+  private var itemMap = Map[Int/* item Id */, List[ItemDbEntry] /* List of Item */]()
 
-  private def setItemMap(map : Map[Int,ItemDbEntry]): Unit ={
+  private def setItemMap(map : Map[Int,List[ItemDbEntry]]): Unit ={
+    println(itemMap)
     itemMap = map
   }
 }

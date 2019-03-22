@@ -5,20 +5,19 @@ import java.security.MessageDigest
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
-
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.actor.{Actor, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-
 import com.github.mauricio.async.db.mysql.message.client.SendLongDataMessage
 import com.receipty._
 import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
+import com.receipty.bantu.core.db.mysql.service.MysqlDbService
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
 import com.receipty.bantu.service.Db.DbService
 import com.receipty.bantu.service.Db.DbService.{AddUser, AddUserResponse}
 import com.receipty.bantu.service.Messaging.MessagingService
-import com.receipty.bantu.service.Messaging.MessagingService.SendMessageToUser
+import com.receipty.bantu.service.Messaging.MessagingService.{SendCustomMessage, SendRegistrationMessage}
 
 
 object UssdService {
@@ -148,6 +147,17 @@ class UssdService extends Actor with ActorLogging {
 
   implicit val timeout = Timeout(5 seconds)
 
+  private def showItemList(entries: List[MysqlDbService.ItemDbEntry]) = {
+    entries.foldLeft(("",1)){
+      case((str, ind),en) =>
+        if(ind < entries.length){
+          (str + s"${ind}.) ${en.description} \n", ind +1)
+        }else{
+          (str + s"${ind}.) ${en.description} \n", ind)
+        }
+
+    }
+  }
   def receive = {
     case req: UssdRequest =>
       val currentSender = sender()
@@ -158,8 +168,51 @@ class UssdService extends Actor with ActorLogging {
         case Some(user) =>
           //User wants to make a sale
           val userItems = ItemDbCache.getUserItems(user.id)
-          val response = "END You have been registered"
-          currentSender ! response
+          println(userItems)
+          if(req.input.length < 1){
+            val response = s"CON .1) Send Receipt\n.2) Items\n.3) Account "
+            currentSender ! response
+          }else{
+            val entries = req.input.split('*')
+            entries.length match {
+              case 1 =>
+                val firstEntry = entries(0)
+                try{
+                  firstEntry.toInt match {
+                    case 1 =>
+                      if(userItems.isEmpty){
+                       currentSender ! "END No items Added, Please check your phone for Information regarding adding Items"
+                        val msg      = s"Hi there, Your user Id is ${user.id}, To add items, Life sucks "
+                        messagingService ! SendCustomMessage(
+                          msg   = msg,
+                          phone = user.phoneNumber
+                        )
+                      }else {
+                        val prefix = s"CON Please Select the Items Sold separated by a a comma ','\n"
+                        currentSender ! (prefix + showItemList(userItems)._1)
+                      }
+                    case 2 =>
+                      if(userItems.length > 10){
+                        showItemList(userItems)._1
+                      }else{
+                        currentSender !  s"CON Your Items are: \n" + showItemList(userItems)._1 + s"${userItems.length + 1}.) Add Item"
+                      }
+                    case 3 =>
+                      currentSender ! "Actions stuff "
+                  }
+                }catch {
+                  case ex : NumberFormatException =>
+                    val response = s"END Invalid Entry. please use numbers "
+                    currentSender ! response
+
+                }
+              case 2 =>
+                currentSender ! s"END Second Entry"
+            }
+          }
+
+
+
         case None =>
           //  New User
           if (req.input.length < 1) {
@@ -252,7 +305,7 @@ class UssdService extends Actor with ActorLogging {
                       case AddUserResponse(true, _) =>
                         log.info("Successful registration for sessionId:{}, phoneNumber:{}, input:{}", req.sessionID, req.phoneNumber, req.input)
                         val response = "END Registration Successful \nPlease Check your Messages for user Details "
-                        messagingService ! SendMessageToUser(
+                        messagingService ! SendRegistrationMessage(
                           phoneNumber = req.phoneNumber,
                           sessionId   = req.sessionID
                         )

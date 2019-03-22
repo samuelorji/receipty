@@ -11,15 +11,16 @@ import com.receipty.bantu.core.db.mysql.service.MysqlDbService.ItemDbEntry
 import com.receipty.bantu.service.Db.DbService
 import com.receipty.bantu.service.Db.DbService.{AddItems, AddItemsResponse, GetUserId, GetUserIdResponse}
 import com.receipty.bantu.service.Messaging.MessageGateway.SendMessage
-import org.joda.time.DateTime
+
 
 
 object MessagingService {
-  case class SendMessageToUser(
+  case class SendRegistrationMessage(
     sessionId: String ,
     phoneNumber : String
   )
   case class CustomerMessage(msg: String,phone : String)
+  case class SendCustomMessage(msg: String,phone : String)
 }
 
 class MessagingService extends Actor with ActorLogging{
@@ -36,8 +37,15 @@ class MessagingService extends Actor with ActorLogging{
   implicit val timeout = Timeout(5 seconds)
 
   import MessagingService._
+  private def sendMessage(message : String, id : Int, pNumber : String) = {
+    messageGateway ! SendMessage(
+      id          = id,
+      phoneNumber = pNumber,
+      msg         = message
+    )
+  }
   def receive = {
-    case req: SendMessageToUser =>
+    case req: SendRegistrationMessage =>
       //first find user Id from
       log.info(s"processing request $req")
       (dbService ? GetUserId(
@@ -48,11 +56,10 @@ class MessagingService extends Actor with ActorLogging{
             if(id != 0){
               //now send user message
               val msg      = s"Welcome To Receipty , Your user Id is ${id}, To add items, Life sucks "
-              messageGateway ! SendMessage(
-                id          = id,
-                phoneNumber = req.phoneNumber,
-                msg         = msg
-              )
+              sendMessage(
+                message = msg,
+                id      = id,
+                pNumber = req.phoneNumber)
             }else{
               log.error(s"Could not fetch data for user: phone :{},sessionId:{}",req.phoneNumber, req.sessionId)
             }
@@ -100,38 +107,38 @@ class MessagingService extends Actor with ActorLogging{
                       //TODO ....send message to user that he/she has successfully added items
                       log.info(s"Successfully added items message to user : phone :{} ", req.phone)
                       val msg = s"Succesfully added $numItems items"
-                      messageGateway ! SendMessage(
+                      sendMessage(
                         id          = user.id,
-                        phoneNumber = user.phoneNumber,
-                        msg         = msg
+                        pNumber     = user.phoneNumber,
+                        message     = msg
                       )
 
                     case AddItemsResponse(false, err) =>
 
                       val msg = s"ERROR:\nCould not add items, please retry"
-                      messageGateway ! SendMessage(
+                      sendMessage(
                         id          = user.id,
-                        phoneNumber = user.phoneNumber,
-                        msg         = msg
+                        pNumber     = user.phoneNumber,
+                        message     = msg
                       )
                       log.error(s"Could Not  Successfully added items for user : phone :{} error :{}", req.phone, err)
                   }
                   case Failure(ex) =>
                     val msg = s"ERROR:\nCould not add items, please retry"
-                    messageGateway ! SendMessage(
+                    sendMessage(
                       id          = user.id,
-                      phoneNumber = user.phoneNumber,
-                      msg         = msg
+                      pNumber     = user.phoneNumber,
+                      message     = msg
                     )
                     log.error(s"Could Not Successfully added items for user : phone :{} error  :{}", req.phone, ex.getMessage)
                 }
               }else{
                 //TODO send to user that number of items too much
                 val msg = s"ERROR:\nHello User ${user.id}, Number of items to add is more than 10"
-                messageGateway ! SendMessage(
+                sendMessage(
                   id          = user.id,
-                  phoneNumber = user.phoneNumber,
-                  msg         = msg
+                  pNumber     = user.phoneNumber,
+                  message     = msg
                 )
               }
 

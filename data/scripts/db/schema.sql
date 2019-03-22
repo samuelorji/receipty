@@ -19,6 +19,10 @@ CREATE TABLE `user` (
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+/*
+CREATE TABLE user (uid int(11) NOT NULL AUTO_INCREMENT,joined timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,phone varchar(15) NOT NULL,password varchar(64) NOT NULL,province int(5) NOT NULL,county int(5) NOT NULL,PRIMARY KEY (uid),UNIQUE KEY (uid));
+
+*/
 CREATE TABLE `item` (
   `iid` int(11) NOT NULL AUTO_INCREMENT,
   `added` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -29,6 +33,9 @@ CREATE TABLE `item` (
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+/*
+CREATE TABLE item (   iid int(11) NOT NULL AUTO_INCREMENT,   added timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,   description varchar(25) NOT NULL,   owner int(11) NOT NULL,   PRIMARY KEY (iid),   FOREIGN KEY (owner) REFERENCES user(uid) );
+*/
 CREATE TABLE `sale` (
   `sid` int(11) NOT NULL AUTO_INCREMENT,
   `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
