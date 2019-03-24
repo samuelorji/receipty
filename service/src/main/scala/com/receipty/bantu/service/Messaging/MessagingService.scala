@@ -6,6 +6,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.receipty.bantu.core.config.ReceiptyConfig
 import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.ItemDbEntry
 import com.receipty.bantu.service.Db.DbService
@@ -85,66 +86,93 @@ class MessagingService extends Actor with ActorLogging{
           userexist match {
             case Some(user) =>
               val numItems = entries.length - 1
-              if(numItems <= 10) {
-                val items = entries.foldLeft(List.empty[ItemDbEntry]) {
-                  case (list, entry) =>
-                    if (entry.toLowerCase.contains("add") || entry.toLowerCase.contains("help")) {
-                      list
-                    } else {
-                      val item = ItemDbEntry(
-                        id = 0,
-                        description = entry.trim,
-                        owner = user.id,
-                        added = ""
-                      )
-                      list :+ item
-                    }
-                }
+              val userItems = ItemDbCache.getUserItems(user.id)
+              println(s"length of user items is ${userItems.length}")
+              if(numItems <= ReceiptyConfig.maxItemsCount) {
+                if (userItems.length + numItems > ReceiptyConfig.maxItemsCount) {
+                  //user cannot add more items , items left that can be added is
+                  //10 -
+                  val errorMsg = s"ERROR:\nItem Limit reached, you already have ${ReceiptyConfig.maxItemsCount} items in store"
 
-                (dbService ? AddItems(items)).mapTo[AddItemsResponse] onComplete {
-                  case Success(res) => res match {
-                    case AddItemsResponse(true, _) =>
-                      //TODO ....send message to user that he/she has successfully added items
-                      log.info(s"Successfully added items message to user : phone :{} ", req.phone)
-                      val msg = s"Succesfully added $numItems items"
-                      sendMessage(
-                        id          = user.id,
-                        pNumber     = user.phoneNumber,
-                        message     = msg
-                      )
+                  println(errorMsg)
+                  sendMessage(
+                    message  = errorMsg,
+                    id       = user.id,
+                    pNumber  = user.phoneNumber
+                  )
 
-                    case AddItemsResponse(false, err) =>
-
-                      val msg = s"ERROR:\nCould not add items, please retry"
-                      sendMessage(
-                        id          = user.id,
-                        pNumber     = user.phoneNumber,
-                        message     = msg
-                      )
-                      log.error(s"Could Not  Successfully added items for user : phone :{} error :{}", req.phone, err)
+                } else {
+                  val items = entries.foldLeft(List.empty[ItemDbEntry]) {
+                    case (list, entry) =>
+                      if (entry.toLowerCase.contains("add") || entry.toLowerCase.contains("help")) {
+                        list
+                      } else {
+                        val item = ItemDbEntry(
+                          id = 0,
+                          description = entry.trim,
+                          owner = user.id,
+                          added = ""
+                        )
+                        list :+ item
+                      }
                   }
-                  case Failure(ex) =>
-                    val msg = s"ERROR:\nCould not add items, please retry"
-                    sendMessage(
-                      id          = user.id,
-                      pNumber     = user.phoneNumber,
-                      message     = msg
-                    )
-                    log.error(s"Could Not Successfully added items for user : phone :{} error  :{}", req.phone, ex.getMessage)
+
+                  (dbService ? AddItems(items)).mapTo[AddItemsResponse] onComplete {
+                    case Success(res) => res match {
+                      case AddItemsResponse(true, _) =>
+                        //TODO ....send message to user that he/she has successfully added items
+                        log.info(s"Successfully added items message to user : phone :{} ", req.phone)
+                        val msg = s"Succesfully added $numItems items"
+                        sendMessage(
+                          id = user.id,
+                          pNumber = user.phoneNumber,
+                          message = msg
+                        )
+
+                      case AddItemsResponse(false, err) =>
+
+                        val errorMsg = s"ERROR:\nCould not add items, please retry"
+                        sendMessage(
+                          id = user.id,
+                          pNumber = user.phoneNumber,
+                          message = errorMsg
+                        )
+                        log.error(s"Could Not Successfully add items for user : phone :{} error :{}", req.phone, err)
+                    }
+                    case Failure(ex) =>
+                      val errorMsg = s"ERROR:\nCould not add items, please retry"
+                      sendMessage(
+                        id = user.id,
+                        pNumber = user.phoneNumber,
+                        message = errorMsg
+                      )
+                      log.error(s"Could Not Successfully added items for user : phone :{} error  :{}", req.phone, ex.getMessage)
+                  }
                 }
-              }else{
+              }
+              else{
                 //TODO send to user that number of items too much
-                val msg = s"ERROR:\nHello User ${user.id}, Number of items to add is more than 10"
+                val errorMsg = s"ERROR:\nHello User ${user.id}, Number of items to add is more than ${ReceiptyConfig.maxItemsCount}"
+                println(errorMsg)
                 sendMessage(
                   id          = user.id,
                   pNumber     = user.phoneNumber,
-                  message     = msg
+                  message     = errorMsg
                 )
               }
 
-              //now tell Db Service to put these items in the DB
+             // now tell Db Service to put these items in the DB
 
             case None  =>
+              val errorMsg = s"ERROR:\nHello , You Have not been registered "
+              println(errorMsg
+
+
+              )
+              messageGateway ! SendCustomMessage(
+                phone     = req.phone,
+                msg       = errorMsg
+              )
           }
 
 

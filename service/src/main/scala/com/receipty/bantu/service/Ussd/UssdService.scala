@@ -11,13 +11,15 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.github.mauricio.async.db.mysql.message.client.SendLongDataMessage
 import com.receipty._
+import com.receipty.bantu.core.config.ReceiptyConfig
 import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService
-import com.receipty.bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
+import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
 import com.receipty.bantu.service.Db.DbService
 import com.receipty.bantu.service.Db.DbService.{AddUser, AddUserResponse}
 import com.receipty.bantu.service.Messaging.MessagingService
 import com.receipty.bantu.service.Messaging.MessagingService.{SendCustomMessage, SendRegistrationMessage}
+import com.receipty.bantu.service.util.ReceiptyUtils
 
 
 object UssdService {
@@ -161,8 +163,7 @@ class UssdService extends Actor with ActorLogging {
   def receive = {
     case req: UssdRequest =>
       val currentSender = sender()
-
-      val userExist = UserDbCache.checkIfUserExixsts(req.phoneNumber)
+      val userExist     = UserDbCache.checkIfUserExixsts(req.phoneNumber)
 
       userExist match {
         case Some(user) =>
@@ -170,7 +171,7 @@ class UssdService extends Actor with ActorLogging {
           val userItems = ItemDbCache.getUserItems(user.id)
           println(userItems)
           if(req.input.length < 1){
-            val response = s"CON .1) Send Receipt\n.2) Items\n.3) Account "
+            val response = s"CON 1) Send Receipt\n2) View All Items\n3) Add Item\n 4) Account  "
             currentSender ! response
           }else{
             val entries = req.input.split('*')
@@ -192,13 +193,20 @@ class UssdService extends Actor with ActorLogging {
                         currentSender ! (prefix + showItemList(userItems)._1)
                       }
                     case 2 =>
-                      if(userItems.length > 10){
-                        showItemList(userItems)._1
-                      }else{
-                        currentSender !  s"CON Your Items are: \n" + showItemList(userItems)._1 + s"${userItems.length + 1}.) Add Item"
-                      }
+                        currentSender ! s"END Items : \n" +  showItemList(userItems)._1
                     case 3 =>
-                      currentSender ! "Actions stuff "
+                      //user wants to add items
+                      if(userItems.length >= ReceiptyConfig.maxItemsCount){
+                        currentSender ! s"END Limit for Number of items to Add reached (${ReceiptyConfig.maxItemsCount})"
+                      }else{
+                        val msg = s"Hello user ${user.id}, to Add items please send so and so to 3340"
+                        messagingService ! SendCustomMessage(
+                          msg   = msg ,
+                          phone = user.phoneNumber
+                        )
+                        currentSender ! s"END Please check your inbox for a detailed message on how to add items"
+                      }
+
                   }
                 }catch {
                   case ex : NumberFormatException =>
@@ -207,7 +215,120 @@ class UssdService extends Actor with ActorLogging {
 
                 }
               case 2 =>
-                currentSender ! s"END Second Entry"
+                //user probably entered 1* or 2*
+                val secondEntryString = entries(1)
+                try{
+                  val userItems = ItemDbCache.getUserItems(user.id)
+                  val firstEntry = entries(0)
+                  firstEntry.toInt match {
+                    case 1 =>
+                      //user has typed in sale separated by a comma
+                      if(!secondEntryString.contains(',')){
+                        val errorMessage = "END Item entries entered are not separated by commas ','"
+                        currentSender ! errorMessage
+                      }else {
+                        val itemsNumList = secondEntryString.split(",").map(_.toInt)
+                        if (itemsNumList.max > ReceiptyConfig.maxItemsCount) {
+                          val msg = "END Entry out of bounds, Maximum entry is 10"
+                          currentSender ! msg
+                        } else {
+                          currentSender ! s"CON Please enter the total amount of all products sold "
+                        }
+                      }
+                    case 4 =>
+                      currentSender ! "END Accounts stuff"
+
+                    case _ =>
+                      currentSender ! "END Invalid Entry "
+                  }
+                }catch {
+                  case ex : NumberFormatException =>
+                    val errorMessage = s"END, Invalid Entry \nPlease enter the item Numbers separated by a comma ','"
+                    currentSender ! errorMessage
+
+                }
+
+              case 3 =>
+                //here 3rd entry is total amount
+
+                try{
+                  entries(2).toFloat
+                  currentSender ! s"CON Please enter phone Number of Customer "
+                }catch {
+                  case ex : NumberFormatException =>
+                    val response = s"END Invalid Entry. please use numbers "
+                    currentSender ! response
+
+                }
+
+              case 4 =>
+
+                try{
+                  val phoneNumberString = entries(3)
+                  if(phoneNumberString.startsWith("+")){
+                    //international format
+                    phoneNumberString.substring(1).toLong
+                  }else{
+                    //regular format
+                    phoneNumberString .toLong
+                  }
+                  currentSender ! s"CON Please enter your password to authenticate this transaction"
+                }catch {
+                  case ex : NumberFormatException =>
+                    val response = s"END Invalid Entry. please use numbers "
+                    currentSender ! response
+
+                }
+
+              case 5 =>
+
+                try{
+                  val password = entries(4).toInt
+                  val phoneNumberString = entries(3)
+                  val totalAmount = entries(2).toDouble
+                  var phoneNumber = ""
+                  if(phoneNumberString.startsWith("+")){
+                    //international format
+                    phoneNumberString.substring(1).toLong
+                    phoneNumber = phoneNumberString
+                  }else{
+                    //regular format
+                    phoneNumberString .toLong
+                    phoneNumber = phoneNumberString.replaceFirst("0","+254")
+                  }
+                  val secondEntryString = entries(1)
+                  val itemsNumList = secondEntryString.split(",").map(_.toInt)
+                  val itemsToSell = userItems.foldLeft((List[ItemDbEntry](), 1)) {
+                    case ((itms, ind), entry) =>
+                      if (itemsNumList.contains(ind)) {
+                        (itms :+ entry, ind + 1)
+                      } else {
+                        (itms, ind + 1)
+                      }
+                  }._1
+                  if(ReceiptyUtils.comparePasswords(
+                    password       = password,
+                    hashedPassword = user.password
+                  )){
+                    val msg  = s"Summary of items: Item number ${itemsToSell.length}\n ${showItemList(itemsToSell)._1}"+
+                    s"\ntotal price is ${totalAmount}\n Customer Number is ${phoneNumber}"
+                    currentSender ! s"END ${msg}"
+
+                  }else{
+                    currentSender ! "END Invalid password "
+
+                  }
+
+                }catch {
+                  case ex : NumberFormatException =>
+                    val response = s"END Invalid Entry\nPhone Number is invalid "
+                    currentSender ! response
+
+                }
+
+
+
+
             }
           }
 
@@ -259,7 +380,6 @@ class UssdService extends Actor with ActorLogging {
                 catch {
                   case _: NumberFormatException =>
                     val errorMsg = s"Invalid Entry"
-
                     val response = s"END $errorMsg\n Please use Numbers "
                     currentSender ! response
 
@@ -291,8 +411,7 @@ class UssdService extends Actor with ActorLogging {
                 val password = entries(3)
                 if (password == entries(2)) {
                   //here we hash the users password and then input into database
-                  val pin = MessageDigest.getInstance("SHA-256").digest(password.getBytes).map("%02x".format(_)).mkString
-                  println(s"user phone number is ${req.phoneNumber}")
+                  val pin = ReceiptyUtils.hashPassword(password)
                   val user = UserDbEntry(
                     phoneNumber = req.phoneNumber,
                     province    = entries(0).toInt,

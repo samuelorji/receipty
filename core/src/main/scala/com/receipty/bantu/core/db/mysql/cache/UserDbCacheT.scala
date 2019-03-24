@@ -38,7 +38,6 @@ private [cache] trait ItemDbCacheT extends MySqlDbCacheManagerT[ItemDbEntry]{
   private var itemMap = Map[Int/* item Id */, List[ItemDbEntry] /* List of Item */]()
 
   private def setItemMap(map : Map[Int,List[ItemDbEntry]]): Unit ={
-    println(itemMap)
     itemMap = map
   }
 }
