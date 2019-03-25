@@ -11,7 +11,7 @@ import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.ItemDbEntry
 import com.receipty.bantu.service.Db.DbService
 import com.receipty.bantu.service.Db.DbService.{AddItems, AddItemsResponse, GetUserId, GetUserIdResponse}
-import com.receipty.bantu.service.Messaging.MessageGateway.SendMessage
+import com.receipty.bantu.service.Messaging.MessageGateway.{SendMessageToClient, SendMessageToClientResponse}
 
 
 
@@ -20,8 +20,10 @@ object MessagingService {
     sessionId: String ,
     phoneNumber : String
   )
+  case class SendRegistrationMessageResponse(status : Boolean)
   case class CustomerMessage(msg: String,phone : String)
-  case class SendCustomMessage(msg: String,phone : String)
+  case class SendCustomMessage(id : Int, msg: String,phone : String)
+  case class SendCustomMessageResponse(status : Boolean)
 }
 
 class MessagingService extends Actor with ActorLogging{
@@ -39,14 +41,17 @@ class MessagingService extends Actor with ActorLogging{
 
   import MessagingService._
   private def sendMessage(message : String, id : Int, pNumber : String) = {
-    messageGateway ! SendMessage(
-      id          = id,
+    (messageGateway ? SendMessageToClient(
+      id = id,
       phoneNumber = pNumber,
-      msg         = message
-    )
+      msg = message
+    )).mapTo[SendMessageToClientResponse]
   }
+
+
   def receive = {
     case req: SendRegistrationMessage =>
+      val currentSender =  sender()
       //first find user Id from
       log.info(s"processing request $req")
       (dbService ? GetUserId(
@@ -60,15 +65,36 @@ class MessagingService extends Actor with ActorLogging{
               sendMessage(
                 message = msg,
                 id      = id,
-                pNumber = req.phoneNumber)
+                pNumber = req.phoneNumber).mapTo[SendMessageToClientResponse] map {
+                case SendMessageToClientResponse(true)  =>
+                  currentSender ! SendRegistrationMessageResponse(true)
+                case SendMessageToClientResponse(false) =>
+                  currentSender ! SendRegistrationMessageResponse(false)
+              }
             }else{
+              currentSender ! SendRegistrationMessageResponse(false)
               log.error(s"Could not fetch data for user: phone :{},sessionId:{}",req.phoneNumber, req.sessionId)
             }
           case GetUserIdResponse(false,_) =>
+            currentSender ! SendRegistrationMessageResponse(false)
             log.error(s"Could not fetch data for user: phone :{},sessionId:{}",req.phoneNumber, req.sessionId)
         }
         case Failure(ex) =>
+          currentSender ! SendRegistrationMessageResponse(false)
           log.error("Error Finding user info for user with phoneNumber : {}, sessionId : {}, Error : {}",req.phoneNumber,req.sessionId,ex.getMessage)
+      }
+
+    case req : SendCustomMessage =>
+      val currentSender =  sender()
+      sendMessage(
+        message = req.msg,
+        id      = req.id,
+        pNumber = req.phone
+      ) map {
+        case SendMessageToClientResponse(true)  =>
+          currentSender ! SendCustomMessageResponse(true)
+        case SendMessageToClientResponse(false) =>
+          currentSender ! SendCustomMessageResponse(false)
       }
 
 
@@ -85,7 +111,7 @@ class MessagingService extends Actor with ActorLogging{
           val userexist = UserDbCache.checkIfUserExixsts(req.phone)
           userexist match {
             case Some(user) =>
-              val numItems = entries.length - 1
+              val numItems  = entries.length - 1
               val userItems = ItemDbCache.getUserItems(user.id)
               println(s"length of user items is ${userItems.length}")
               if(numItems <= ReceiptyConfig.maxItemsCount) {
@@ -161,7 +187,6 @@ class MessagingService extends Actor with ActorLogging{
                 )
               }
 
-             // now tell Db Service to put these items in the DB
 
             case None  =>
               val errorMsg = s"ERROR:\nHello , You Have not been registered "
@@ -171,7 +196,9 @@ class MessagingService extends Actor with ActorLogging{
               )
               messageGateway ! SendCustomMessage(
                 phone     = req.phone,
-                msg       = errorMsg
+                msg       = errorMsg,
+                id        = 0,
+
               )
           }
 

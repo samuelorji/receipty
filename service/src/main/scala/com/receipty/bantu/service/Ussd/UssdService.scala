@@ -18,7 +18,7 @@ import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, Use
 import com.receipty.bantu.service.Db.DbService
 import com.receipty.bantu.service.Db.DbService.{AddUser, AddUserResponse}
 import com.receipty.bantu.service.Messaging.MessagingService
-import com.receipty.bantu.service.Messaging.MessagingService.{SendCustomMessage, SendRegistrationMessage}
+import com.receipty.bantu.service.Messaging.MessagingService.{SendCustomMessage, SendCustomMessageResponse, SendRegistrationMessage, SendRegistrationMessageResponse}
 import com.receipty.bantu.service.util.ReceiptyUtils
 
 
@@ -182,14 +182,20 @@ class UssdService extends Actor with ActorLogging {
                   firstEntry.toInt match {
                     case 1 =>
                       if(userItems.isEmpty){
-                       currentSender ! "END No items Added, Please check your phone for Information regarding adding Items"
                         val msg      = s"Hi there, Your user Id is ${user.id}, To add items, Life sucks "
-                        messagingService ! SendCustomMessage(
+                        (messagingService ? SendCustomMessage(
                           msg   = msg,
-                          phone = user.phoneNumber
-                        )
+                          phone = user.phoneNumber,
+                          id    = user.id
+                        )).mapTo[SendCustomMessageResponse] map {
+                          case SendCustomMessageResponse(true) =>
+                            //message sent was succesfully
+                            currentSender ! s"END No items Added, Please check your phone for Information regarding adding Items"
+                          case SendCustomMessageResponse(false) =>
+                            currentSender ! s"END No items Added, There was an issue sending you a message for adding Items,Please Dial the short Code, and select AddItems"
+                        }
                       }else {
-                        val prefix = s"CON Please Select the Items Sold separated by a a comma ','\n"
+                        val prefix  = s"CON Please Select the Items Sold separated by a comma ','\n"
                         currentSender ! (prefix + showItemList(userItems)._1)
                       }
                     case 2 =>
@@ -200,11 +206,17 @@ class UssdService extends Actor with ActorLogging {
                         currentSender ! s"END Limit for Number of items to Add reached (${ReceiptyConfig.maxItemsCount})"
                       }else{
                         val msg = s"Hello user ${user.id}, to Add items please send so and so to 3340"
-                        messagingService ! SendCustomMessage(
+                        (messagingService ? SendCustomMessage (
                           msg   = msg ,
-                          phone = user.phoneNumber
-                        )
-                        currentSender ! s"END Please check your inbox for a detailed message on how to add items"
+                          phone = user.phoneNumber,
+                          id    = user.id
+                        )).mapTo[SendCustomMessageResponse] map {
+                          case SendCustomMessageResponse(true) =>
+                            //message sent was succesfully
+                            currentSender ! s"END Please check your inbox for a detailed message on how to add items"
+                          case SendCustomMessageResponse(false) =>
+                                                                                                                                                                                                                                                                                                                        currentSender ! s"END There was an issue sending you a message for adding Items, please try again "
+                        }
                       }
 
                   }
@@ -250,7 +262,6 @@ class UssdService extends Actor with ActorLogging {
 
               case 3 =>
                 //here 3rd entry is total amount
-
                 try{
                   entries(2).toFloat
                   currentSender ! s"CON Please enter phone Number of Customer "
@@ -258,9 +269,7 @@ class UssdService extends Actor with ActorLogging {
                   case ex : NumberFormatException =>
                     val response = s"END Invalid Entry. please use numbers "
                     currentSender ! response
-
                 }
-
               case 4 =>
 
                 try{
@@ -325,14 +334,8 @@ class UssdService extends Actor with ActorLogging {
                     currentSender ! response
 
                 }
-
-
-
-
             }
           }
-
-
 
         case None =>
           //  New User
@@ -423,12 +426,19 @@ class UssdService extends Actor with ActorLogging {
                     case Success(res) => res match {
                       case AddUserResponse(true, _) =>
                         log.info("Successful registration for sessionId:{}, phoneNumber:{}, input:{}", req.sessionID, req.phoneNumber, req.input)
-                        val response = "END Registration Successful \nPlease Check your Messages for user Details "
-                        messagingService ! SendRegistrationMessage(
+                        val successResponse = "END Registration Successful \nPlease Check your Messages for user Details "
+                        val errorResponse   = "END Registration Successful \nUnfortunately We are are having technical difficulties sending you your Registration Details\nPlease go to accounts via USSD for Details" +
+                          " please dial the shortcode for account Details "
+                        ( messagingService ? SendRegistrationMessage(
                           phoneNumber = req.phoneNumber,
                           sessionId   = req.sessionID
-                        )
-                        currentSender ! response
+                        )).mapTo[SendRegistrationMessageResponse] map {
+                          case SendRegistrationMessageResponse(true) =>
+                            currentSender ! successResponse
+                          case SendRegistrationMessageResponse(false) =>
+                            currentSender ! errorResponse
+                        }
+
                       case AddUserResponse(false, msg) =>
                         println(msg)
                         log.error("UnSuccessful registration for sessionId:{}, phoneNumber:{}, input:{}, Error : {} ", req.sessionID, req.phoneNumber, req.input, msg)
