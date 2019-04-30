@@ -16,7 +16,7 @@ import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
 import com.receipty.bantu.service.Db.DbService
-import com.receipty.bantu.service.Db.DbService.{AddUser, AddUserResponse}
+import com.receipty.bantu.service.Db.DbService.{AddUserRequest, AddUserResponse, SellItemResponse, SellItemsRequest}
 import com.receipty.bantu.service.Messaging.MessagingService
 import com.receipty.bantu.service.Messaging.MessagingService.{SendCustomMessage, SendCustomMessageResponse, SendRegistrationMessage, SendRegistrationMessageResponse}
 import com.receipty.bantu.service.util.ReceiptyUtils
@@ -35,12 +35,12 @@ class UssdService extends Actor with ActorLogging {
 
   private val countyMap =
     Map[String, List[String]](
-      "Nairobi" -> List("Nairobi"), "Central" -> List("Kiambu", "Nyeri", "Muranga", "Muranga", "Nyandarua"),
-      "Eastern" -> List("Marsabit", "Isiolo", "Meru", "Tharaka Nithi", "Embu", "Kitui", "Machakos", "Makueni"),
-      "Rift Valley" -> List("West Pokot", "Samburu", "Transzoia", "Uasin Gishu", "Elgeyo", "Nandi", "Baringo", "Laikipia", "Nakuru", "Narok", "Kajiado", "Kericho", "Bomet"),
-      "Nyanza" -> List("Siaya", "Kisumu", "Homabay", "Migori", "Kisii", "Nyamira"),
-      "Western" -> List("Kakamega", "Vihiga", "Busia", "Bungoma"),
-      "Coast" -> List("Mombasa", "Kwale", "Kilifi", "Tana River", "Taita Taveta", "Lamu"),
+      "Nairobi"       -> List("Nairobi"), "Central" -> List("Kiambu", "Nyeri", "Muranga", "Muranga", "Nyandarua"),
+      "Eastern"       -> List("Marsabit", "Isiolo", "Meru", "Tharaka Nithi", "Embu", "Kitui", "Machakos", "Makueni"),
+      "Rift Valley"   -> List("West Pokot", "Samburu", "Transzoia", "Uasin Gishu", "Elgeyo", "Nandi", "Baringo", "Laikipia", "Nakuru", "Narok", "Kajiado", "Kericho", "Bomet"),
+      "Nyanza"        -> List("Siaya", "Kisumu", "Homabay", "Migori", "Kisii", "Nyamira"),
+      "Western"       -> List("Kakamega", "Vihiga", "Busia", "Bungoma"),
+      "Coast"         -> List("Mombasa", "Kwale", "Kilifi", "Tana River", "Taita Taveta", "Lamu"),
       "North Eastern" -> List("Garissa", "Wajir", "Mandera"))
 
   private val provinceMap =
@@ -279,18 +279,16 @@ class UssdService extends Actor with ActorLogging {
                     phoneNumberString.substring(1).toLong
                   }else{
                     //regular format
-                    phoneNumberString .toLong
+                    phoneNumberString.toLong
                   }
                   currentSender ! s"CON Please enter your password to authenticate this transaction"
                 }catch {
                   case ex : NumberFormatException =>
                     val response = s"END Invalid Entry. please use numbers "
                     currentSender ! response
-
                 }
 
               case 5 =>
-
                 try{
                   val password = entries(4).toInt
                   val phoneNumberString = entries(3)
@@ -306,8 +304,8 @@ class UssdService extends Actor with ActorLogging {
                     phoneNumber = phoneNumberString.replaceFirst("0","+254")
                   }
                   val secondEntryString = entries(1)
-                  val itemsNumList = secondEntryString.split(",").map(_.toInt)
-                  val itemsToSell = userItems.foldLeft((List[ItemDbEntry](), 1)) {
+                  val itemsNumList      = secondEntryString.split(",").map(_.toInt)
+                  val itemsToSell       = userItems.foldLeft((List[ItemDbEntry](), 1)) {
                     case ((itms, ind), entry) =>
                       if (itemsNumList.contains(ind)) {
                         (itms :+ entry, ind + 1)
@@ -319,20 +317,52 @@ class UssdService extends Actor with ActorLogging {
                     password       = password,
                     hashedPassword = user.password
                   )){
-                    val msg  = s"Summary of items: Item number ${itemsToSell.length}\n ${showItemList(itemsToSell)._1}"+
-                    s"\ntotal price is ${totalAmount}\n Customer Number is ${phoneNumber}"
-                    currentSender ! s"END ${msg}"
 
+                    //here a successful sale has been made
+                    import DbService.Sale
+
+                    val sale = Sale(
+                      total  = totalAmount,
+                      phone  = phoneNumber,
+                      items  = itemsToSell,
+                      userId = user.id
+                    )
+
+                    (dbService ? SellItemsRequest(sale)).mapTo[SellItemResponse] onComplete {
+                      case Success(res) => res match {
+                        case SellItemResponse(true , _)   =>
+                          val msg  = s"Summary of items Sold: Item number ${itemsToSell.length}\n ${showItemList(itemsToSell)._1}"+
+                            s"\ntotal price is ${totalAmount}\n Customer Number is ${phoneNumber}"
+                          (messagingService ? SendCustomMessage(user.id,msg,phoneNumber)).mapTo[SendCustomMessageResponse] onComplete {
+                            case Success(res) => res.status match {
+                              case true  =>
+                                currentSender ! s"END ${msg}"
+                              case false =>
+                                currentSender ! s"END Error Sending message to the user but sale successfully recorded"
+                            }
+                            case Failure(ex)  =>
+                              log.error("Error Sending message to the user but sale successfully recorded for user number : {}, exception {} ", user.phoneNumber,ex.getMessage)
+                              currentSender ! s"END Error Sending message to the user but sale successfully recorded"
+                          }
+
+                        case SellItemResponse(false, err) =>
+
+                          val msg = "Internal Error Processing Sale"
+                          log.error("Error inserting into database user : {}, error : {}", user.phoneNumber,err)
+                          currentSender ! s"END $msg"
+                      }
+                      case Failure(ex)  =>
+                        val msg = "Internal Error Processing Sale"
+                        log.error("Failure inserting into Database  user : {}, error : {}", user.phoneNumber,ex.getMessage)
+                        currentSender ! s"END $msg"
+                    }
                   }else{
                     currentSender ! "END Invalid password "
-
                   }
-
                 }catch {
                   case ex : NumberFormatException =>
                     val response = s"END Invalid Entry\nPhone Number is invalid "
                     currentSender ! response
-
                 }
             }
           }
@@ -422,7 +452,7 @@ class UssdService extends Actor with ActorLogging {
                     password    = pin
                   )
 
-                  (dbService ? AddUser(user)).mapTo[AddUserResponse] onComplete {
+                  (dbService ? AddUserRequest(user)).mapTo[AddUserResponse] onComplete {
                     case Success(res) => res match {
                       case AddUserResponse(true, _) =>
                         log.info("Successful registration for sessionId:{}, phoneNumber:{}, input:{}", req.sessionID, req.phoneNumber, req.input)
@@ -450,7 +480,6 @@ class UssdService extends Actor with ActorLogging {
                       log.error("UnSuccessful registration for sessionId:{}, phoneNumber:{}, input:{}, Error : {} ", req.sessionID, req.phoneNumber, req.input, ex.getMessage)
                       val response = "END Registration Unsuccessful \n Please try registering again  "
                       currentSender ! response
-
                   }
                 }
                 else if (password.length != 4) {

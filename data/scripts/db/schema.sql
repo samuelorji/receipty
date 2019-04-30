@@ -49,3 +49,31 @@ CREATE TABLE `sale` (
   FOREIGN KEY `uid` REFERENCES user(`uid`),
   FOREIGN KEY `iid` REFERENCES item(`iid`),
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+
+//Sale Table 
+
+/*
+CREATE TABLE sale (
+sid int(11) NOT NULL AUTO_INCREMENT,
+date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+cust_num varchar(15) NOT NULL,
+total double(11,2) NOT NULL,
+uid int(11) NOT NULL,
+PRIMARY KEY (sid),
+FOREIGN KEY (uid) REFERENCES user(uid)
+);
+*/
+
+
+
+//Order Table
+
+CREATE TABLE `order` (
+oid int(11) NOT NULL AUTO_INCREMENT,
+sid int(11) NOT NULL,
+iid int(11) NOT NULL,
+PRIMARY KEY (oid),
+FOREIGN KEY (sid) REFERENCES sale(sid),
+FOREIGN KEY (iid) REFERENCES item(iid)
+);

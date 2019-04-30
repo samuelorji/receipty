@@ -11,13 +11,14 @@ import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, Use
 import org.joda.time.{DateTime, LocalDateTime}
 
 object ReceiptyMapper extends ReceiptyMapperT
+
+
 private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
 
   val FetchAllUsersSql  = "SELECT * FROM user"
   val fetchAllItemsSql  = "SELECT * FROM item"
 
   def fetchAllItems: Future[List[ItemDbEntry]] = {
-
     pool.sendPreparedStatement(fetchAllItemsSql) map{ queryResult =>
       queryResult .rows match {
           case Some(rows) => rows.toList.map(x => rowToItemModel(x))
@@ -27,7 +28,6 @@ private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
   }
 
   def fetchAllUsers : Future[List[UserDbEntry]] = {
-
     pool.sendPreparedStatement(FetchAllUsersSql) map{ queryResult =>
       queryResult .rows match {
         case Some(rows) => rows.toList.map(x => rowToUserModel(x))
@@ -36,7 +36,35 @@ private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
     }
   }
 
+  def addToOrderTable(sid : Int ,items: List[ItemDbEntry]) = {
+    val query = s"INSERT INTO `order` (sid,iid) VALUES " + items.foldLeft(("",1)){
+      case ((str,ind), item) =>
+        if(ind < items.length) {
+          (str + s"(${sid},${item.id}),",ind+1)
+        }else{
+          (str + s"(${sid},${item.id});",ind+1)
+        }
+    }._1
+    pool.sendPreparedStatement(query)
+  }
+  def addToSaleTable(total: Double, phone: String, userId : Int) = {
+    val query = s"INSERT INTO sale (cust_num,total,uid) VALUES('$phone',$total,$userId)"
+    pool.sendPreparedStatement(query)
+  }
 
+  def rowToSID(row: RowData) : Int =  {
+    row("sid").asInstanceOf[Int]
+  }
+
+  def findSaleId(userId: Int) = {
+    val query = s"SELECT sid from sale where uid=$userId ORDER BY date DESC LIMIT 1"
+    pool.sendPreparedStatement(query) map { queryResult =>
+      queryResult.rows match {
+        case Some(rows) => println(Some(rowToSID(rows.toList.head))) ; Some(rowToSID(rows.toList.head))
+        case None       => None
+      }
+    }
+  }
 
   def addItemsIntoDb(items : List[ItemDbEntry]) = {
     val query = s"INSERT INTO item (description,owner) VALUES " + items.foldLeft(("",1)){
@@ -48,7 +76,6 @@ private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
         }
     }._1
     pool.sendPreparedStatement(query)
-
   }
 
   def insertUserIntoDb(user : UserDbEntry) = {
@@ -57,14 +84,12 @@ private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
   }
 
   def findUserById(phoneNumber : String) = {
-
     val query = s"SELECT * FROM user where phone = '$phoneNumber'"
     pool.sendPreparedStatement(query)map { queryResult =>
       queryResult.rows match {
         case Some(rows) => Some(rowToUserModel(rows.toList.head))
         case None       => None
       }
-
     }
   }
 

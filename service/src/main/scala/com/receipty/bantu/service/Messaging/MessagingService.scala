@@ -10,7 +10,7 @@ import com.receipty.bantu.core.config.ReceiptyConfig
 import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.ItemDbEntry
 import com.receipty.bantu.service.Db.DbService
-import com.receipty.bantu.service.Db.DbService.{AddItems, AddItemsResponse, GetUserId, GetUserIdResponse}
+import com.receipty.bantu.service.Db.DbService.{AddItemsRequest, AddItemsResponse, GetUserIdRequest, GetUserIdResponse}
 import com.receipty.bantu.service.Messaging.MessageGateway.{SendMessageToClient, SendMessageToClientResponse}
 
 
@@ -54,7 +54,7 @@ class MessagingService extends Actor with ActorLogging{
       val currentSender =  sender()
       //first find user Id from
       log.info(s"processing request $req")
-      (dbService ? GetUserId(
+      (dbService ? GetUserIdRequest(
         phoneNumber  = req.phoneNumber.substring(1)
       )).mapTo[GetUserIdResponse] onComplete{
         case Success(res) => res match {
@@ -143,7 +143,7 @@ class MessagingService extends Actor with ActorLogging{
                       }
                   }
 
-                  (dbService ? AddItems(items)).mapTo[AddItemsResponse] onComplete {
+                  (dbService ? AddItemsRequest(items)).mapTo[AddItemsResponse] onComplete {
                     case Success(res) => res match {
                       case AddItemsResponse(true, _) =>
                         //TODO ....send message to user that he/she has successfully added items
