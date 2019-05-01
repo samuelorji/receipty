@@ -22,7 +22,7 @@ object MessagingService {
   )
   case class SendRegistrationMessageResponse(status : Boolean)
   case class CustomerMessage(msg: String,phone : String)
-  case class SendCustomMessage(id : Int, msg: String,phone : String)
+  case class SendCustomMessageRequest(id : Int, msg: String, phone : String)
   case class SendCustomMessageResponse(status : Boolean)
 }
 
@@ -84,7 +84,7 @@ class MessagingService extends Actor with ActorLogging{
           log.error("Error Finding user info for user with phoneNumber : {}, sessionId : {}, Error : {}",req.phoneNumber,req.sessionId,ex.getMessage)
       }
 
-    case req : SendCustomMessage =>
+    case req : SendCustomMessageRequest =>
       val currentSender =  sender()
       sendMessage(
         message = req.msg,
@@ -96,7 +96,6 @@ class MessagingService extends Actor with ActorLogging{
         case SendMessageToClientResponse(false) =>
           currentSender ! SendCustomMessageResponse(false)
       }
-
 
     case req : CustomerMessage =>
       //TODO ...this should contain detail from registered user for adding items or any other complaint
@@ -194,7 +193,7 @@ class MessagingService extends Actor with ActorLogging{
 
 
               )
-              messageGateway ! SendCustomMessage(
+              messageGateway ! SendCustomMessageRequest(
                 phone     = req.phone,
                 msg       = errorMsg,
                 id        = 0,

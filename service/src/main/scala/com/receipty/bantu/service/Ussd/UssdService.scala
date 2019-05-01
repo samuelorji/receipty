@@ -18,7 +18,7 @@ import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, Use
 import com.receipty.bantu.service.Db.DbService
 import com.receipty.bantu.service.Db.DbService.{AddUserRequest, AddUserResponse, SellItemResponse, SellItemsRequest}
 import com.receipty.bantu.service.Messaging.MessagingService
-import com.receipty.bantu.service.Messaging.MessagingService.{SendCustomMessage, SendCustomMessageResponse, SendRegistrationMessage, SendRegistrationMessageResponse}
+import com.receipty.bantu.service.Messaging.MessagingService.{SendCustomMessageRequest, SendCustomMessageResponse, SendRegistrationMessage, SendRegistrationMessageResponse}
 import com.receipty.bantu.service.util.ReceiptyUtils
 
 
@@ -157,9 +157,9 @@ class UssdService extends Actor with ActorLogging {
         }else{
           (str + s"${ind}.) ${en.description} \n", ind)
         }
-
     }
   }
+
   def receive = {
     case req: UssdRequest =>
       val currentSender = sender()
@@ -183,7 +183,7 @@ class UssdService extends Actor with ActorLogging {
                     case 1 =>
                       if(userItems.isEmpty){
                         val msg      = s"Hi there, Your user Id is ${user.id}, To add items, Life sucks "
-                        (messagingService ? SendCustomMessage(
+                        (messagingService ? SendCustomMessageRequest(
                           msg   = msg,
                           phone = user.phoneNumber,
                           id    = user.id
@@ -206,7 +206,7 @@ class UssdService extends Actor with ActorLogging {
                         currentSender ! s"END Limit for Number of items to Add reached (${ReceiptyConfig.maxItemsCount})"
                       }else{
                         val msg = s"Hello user ${user.id}, to Add items please send so and so to 3340"
-                        (messagingService ? SendCustomMessage (
+                        (messagingService ? SendCustomMessageRequest (
                           msg   = msg ,
                           phone = user.phoneNumber,
                           id    = user.id
@@ -331,10 +331,9 @@ class UssdService extends Actor with ActorLogging {
                     (dbService ? SellItemsRequest(sale)).mapTo[SellItemResponse] onComplete {
                       case Success(res) => res match {
                         case SellItemResponse(true , _)   =>
-                          val msg  = s"Summary of items Sold: Item number ${itemsToSell.length}\n ${showItemList(itemsToSell)._1}"+
-                            s"\ntotal price is ${totalAmount}\n Customer Number is ${phoneNumber}"
-                          (messagingService ? SendCustomMessage(user.id,msg,phoneNumber)).mapTo[SendCustomMessageResponse] onComplete {
-                            case Success(res) => res.status match {
+                          val msg  =  s"Receipt for ${showItemList(itemsToSell)._1} at ${totalAmount} sent to ${phoneNumber}"
+                          (messagingService ? SendCustomMessageRequest(user.id,msg,phoneNumber)).mapTo[SendCustomMessageResponse] onComplete {
+                            case Success(payload) => payload.status match {
                               case true  =>
                                 currentSender ! s"END ${msg}"
                               case false =>

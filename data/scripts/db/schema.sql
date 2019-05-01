@@ -77,3 +77,14 @@ PRIMARY KEY (oid),
 FOREIGN KEY (sid) REFERENCES sale(sid),
 FOREIGN KEY (iid) REFERENCES item(iid)
 );
+
+/*
+query to fetch all sales for each user in each day ="select cust_num,total,uid,sid from sale where date > (DATE_ADD(NOW(),INTERVAL -1 DAY)) AND uid in (select uid from user);"
+*/
+
+/*
+query for sales made by each user and item description in the process
+"select t1.sid,t1.iid,t1.cust_num,t1.total,t1.uid,item.description,item.owner from (select sale.date,sale.sid,sale.cust_num,sale.total,sale.uid,`order`.iid FROM sale INNER JOIN `order` ON sale.sid=`order`.sid where date > (DATE_ADD(NOW(),INTERVAL -1 DAY))) t1
+ INNER JOIN item
+ ON t1.iid=item.iid;"
+*/

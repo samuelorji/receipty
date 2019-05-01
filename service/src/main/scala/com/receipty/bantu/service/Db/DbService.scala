@@ -13,6 +13,7 @@ import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, Use
 object DbService {
   case class AddUserRequest(user: UserDbEntry)
   case class AddUserResponse(status : Boolean , msg : String)
+   
   case class GetUserIdRequest(phoneNumber : String)
   case class GetUserIdResponse(status : Boolean, id : Int)
 
