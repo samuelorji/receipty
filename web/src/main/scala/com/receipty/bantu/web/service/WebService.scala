@@ -52,8 +52,8 @@ trait ReceiptyWebServiceT {
             entity(as[String]){msg =>
               println(msg)
               messagingService ! CustomerMessage(
-                msg = "ADD#cake 7kg #milk # meat # laptop # macbook pro # dell xps13 ",//# fried rice # jollof rice#charger" ,
-                phone = "+2348112172624"
+                msg   = msg,//# fried rice # jollof rice#charger" ,
+                phone = "+254706800434"
               )
               complete(StatusCodes.OK)
 
@@ -64,3 +64,5 @@ trait ReceiptyWebServiceT {
     }
   }
 }
+
+//+254706800434

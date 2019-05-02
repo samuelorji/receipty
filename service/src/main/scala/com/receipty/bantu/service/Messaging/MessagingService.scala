@@ -134,7 +134,7 @@ class MessagingService extends Actor with ActorLogging{
                       } else {
                         val item = ItemDbEntry(
                           id = 0,
-                          description = entry.trim,
+                          description = entry.trim.toLowerCase,
                           owner = user.id,
                           added = ""
                         )

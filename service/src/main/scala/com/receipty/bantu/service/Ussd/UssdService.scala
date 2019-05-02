@@ -264,7 +264,7 @@ class UssdService extends Actor with ActorLogging {
                 //here 3rd entry is total amount
                 try{
                   entries(2).toFloat
-                  currentSender ! s"CON Please enter phone Number of Customer "
+                  currentSender ! s"CON Please enter phone Number of Customer in regular format 07XXXXXXXX"
                 }catch {
                   case ex : NumberFormatException =>
                     val response = s"END Invalid Entry. please use numbers "
@@ -274,14 +274,13 @@ class UssdService extends Actor with ActorLogging {
 
                 try{
                   val phoneNumberString = entries(3)
-                  if(phoneNumberString.startsWith("+")){
-                    //international format
-                    phoneNumberString.substring(1).toLong
-                  }else{
-                    //regular format
                     phoneNumberString.toLong
+
+                  if(phoneNumberString.length == 10){
+                    currentSender ! s"CON Please enter your password to authenticate this transaction"
+                  }else{
+                    currentSender ! s"END Invalid Phone Number"
                   }
-                  currentSender ! s"CON Please enter your password to authenticate this transaction"
                 }catch {
                   case ex : NumberFormatException =>
                     val response = s"END Invalid Entry. please use numbers "
@@ -293,16 +292,7 @@ class UssdService extends Actor with ActorLogging {
                   val password = entries(4).toInt
                   val phoneNumberString = entries(3)
                   val totalAmount = entries(2).toDouble
-                  var phoneNumber = ""
-                  if(phoneNumberString.startsWith("+")){
-                    //international format
-                    phoneNumberString.substring(1).toLong
-                    phoneNumber = phoneNumberString
-                  }else{
-                    //regular format
-                    phoneNumberString .toLong
-                    phoneNumber = phoneNumberString.replaceFirst("0","+254")
-                  }
+                  val phoneNumber = phoneNumberString.replaceFirst("0","+254")
                   val secondEntryString = entries(1)
                   val itemsNumList      = secondEntryString.split(",").map(_.toInt)
                   val itemsToSell       = userItems.foldLeft((List[ItemDbEntry](), 1)) {
@@ -337,7 +327,7 @@ class UssdService extends Actor with ActorLogging {
                               case true  =>
                                 currentSender ! s"END ${msg}"
                               case false =>
-                                currentSender ! s"END Error Sending message to the user but sale successfully recorded"
+                                currentSender ! s"END Error Sending message to the customer but sale successfully recorded"
                             }
                             case Failure(ex)  =>
                               log.error("Error Sending message to the user but sale successfully recorded for user number : {}, exception {} ", user.phoneNumber,ex.getMessage)
