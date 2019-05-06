@@ -35,7 +35,8 @@ class UssdService extends Actor with ActorLogging {
 
   private val countyMap =
     Map[String, List[String]](
-      "Nairobi"       -> List("Nairobi"), "Central" -> List("Kiambu", "Nyeri", "Muranga", "Muranga", "Nyandarua"),
+      "Nairobi"       -> List("Nairobi"),
+      "Central"       -> List("Kiambu", "Nyeri", "Muranga", "Nyandarua"),
       "Eastern"       -> List("Marsabit", "Isiolo", "Meru", "Tharaka Nithi", "Embu", "Kitui", "Machakos", "Makueni"),
       "Rift Valley"   -> List("West Pokot", "Samburu", "Transzoia", "Uasin Gishu", "Elgeyo", "Nandi", "Baringo", "Laikipia", "Nakuru", "Narok", "Kajiado", "Kericho", "Bomet"),
       "Nyanza"        -> List("Siaya", "Kisumu", "Homabay", "Migori", "Kisii", "Nyamira"),
@@ -44,7 +45,16 @@ class UssdService extends Actor with ActorLogging {
       "North Eastern" -> List("Garissa", "Wajir", "Mandera"))
 
   private val provinceMap =
-    Map[Int, String](1 -> "Nairobi", 2 -> "Central", 3 -> "Eastern", 4 -> "Rift Valley", 5 -> "Nyanza", 6 -> "Western", 7 -> "Coast", 8 -> "North Eastern")
+    Map[Int, String](
+      1 -> "Nairobi",
+      2 -> "Central",
+      3 -> "Eastern",
+      4 -> "Rift Valley",
+      5 -> "Nyanza",
+      6 -> "Western",
+      7 -> "Coast",
+      8 -> "North Eastern"
+    )
 
 
   private def showCounty(selection: Int): String = {
@@ -292,7 +302,7 @@ class UssdService extends Actor with ActorLogging {
                   val password = entries(4).toInt
                   val phoneNumberString = entries(3)
                   val totalAmount = entries(2).toDouble
-                  val phoneNumber = phoneNumberString.replaceFirst("0","+254")
+                  val phoneNumber = phoneNumberString.  replaceFirst("0","+254")
                   val secondEntryString = entries(1)
                   val itemsNumList      = secondEntryString.split(",").map(_.toInt)
                   val itemsToSell       = userItems.foldLeft((List[ItemDbEntry](), 1)) {

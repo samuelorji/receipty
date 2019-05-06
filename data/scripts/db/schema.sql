@@ -34,7 +34,7 @@ CREATE TABLE `item` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*
-CREATE TABLE item (iid int(11) NOT NULL AUTO_INCREMENT,added timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,description varchar(25) NOT NULL,owner int(11) NOT NULL,PRIMARY KEY (iid),FOREIGN KEY (owner) REFERENCES user(uid) );
+CREATE TABLE item (iid int(11) NOT NULL AUTO_INCREMENT,added timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,description varchar(20) NOT NULL,owner int(11) NOT NULL,PRIMARY KEY (iid),FOREIGN KEY (owner) REFERENCES user(uid) );
 */
 CREATE TABLE `sale` (
   `sid` int(11) NOT NULL AUTO_INCREMENT,

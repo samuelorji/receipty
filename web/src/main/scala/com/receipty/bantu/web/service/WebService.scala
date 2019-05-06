@@ -53,7 +53,7 @@ trait ReceiptyWebServiceT {
               println(msg)
               messagingService ! CustomerMessage(
                 msg   = msg,//# fried rice # jollof rice#charger" ,
-                phone = "+254706800434"
+                phone = "+254786770842"
               )
               complete(StatusCodes.OK)
 

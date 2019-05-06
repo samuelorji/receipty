@@ -55,13 +55,14 @@ class MessagingService extends Actor with ActorLogging{
       //first find user Id from
       log.info(s"processing request $req")
       (dbService ? GetUserIdRequest(
-        phoneNumber  = req.phoneNumber.substring(1)
+        phoneNumber  = req.phoneNumber
       )).mapTo[GetUserIdResponse] onComplete{
         case Success(res) => res match {
           case GetUserIdResponse(true, id) =>
             if(id != 0){
               //now send user message
-              val msg      = s"Welcome To Receipty , Your user Id is ${id}, To add items, Life sucks "
+              val msg      = s"Welcome To Receipty , Your user Id is ${id}, To add items, please send ADD and the items separated by # example ADD#Ugali#Rice. " +
+                s"Please ensure that the items do not exceed 10  "
               sendMessage(
                 message = msg,
                 id      = id,
@@ -73,7 +74,7 @@ class MessagingService extends Actor with ActorLogging{
               }
             }else{
               currentSender ! SendRegistrationMessageResponse(false)
-              log.error(s"Could not fetch data for user: phone :{},sessionId:{}",req.phoneNumber, req.sessionId)
+              log.error(s"Could not fetch data for user with phone :{},sessionId:{}",req.phoneNumber, req.sessionId)
             }
           case GetUserIdResponse(false,_) =>
             currentSender ! SendRegistrationMessageResponse(false)
@@ -117,7 +118,7 @@ class MessagingService extends Actor with ActorLogging{
                 if (userItems.length + numItems > ReceiptyConfig.maxItemsCount) {
                   //user cannot add more items , items left that can be added is
                   //10 -
-                  val errorMsg = s"ERROR:\nItem Limit reached, you already have ${ReceiptyConfig.maxItemsCount} items in store"
+                  val errorMsg = s"ERROR:\nItem Limit is ${ReceiptyConfig.maxItemsCount}, you already have ${userItems.length} items in store, you can only add ${ReceiptyConfig.maxItemsCount - userItems.length}"
 
                   println(errorMsg)
                   sendMessage(
@@ -125,7 +126,6 @@ class MessagingService extends Actor with ActorLogging{
                     id       = user.id,
                     pNumber  = user.phoneNumber
                   )
-
                 } else {
                   val items = entries.foldLeft(List.empty[ItemDbEntry]) {
                     case (list, entry) =>
