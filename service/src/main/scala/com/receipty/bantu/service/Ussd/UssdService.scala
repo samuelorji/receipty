@@ -16,7 +16,7 @@ import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
 import com.receipty.bantu.service.Db.DbService
-import com.receipty.bantu.service.Db.DbService.{AddUserRequest, AddUserResponse, SellItemResponse, SellItemsRequest}
+import com.receipty.bantu.service.Db.DbService._
 import com.receipty.bantu.service.Messaging.MessagingService
 import com.receipty.bantu.service.Messaging.MessagingService.{SendCustomMessageRequest, SendCustomMessageResponse, SendRegistrationMessage, SendRegistrationMessageResponse}
 import com.receipty.bantu.service.util.ReceiptyUtils
@@ -170,6 +170,17 @@ class UssdService extends Actor with ActorLogging {
     }
   }
 
+  private def getUserItemsFromInput(userItems : List[ItemDbEntry], itemsNumList : List[Int]) = {
+    userItems.foldLeft((List[ItemDbEntry](), 1)) {
+      case ((itms, ind), entry) =>
+        if (itemsNumList.contains(ind)) {
+          (itms :+ entry, ind + 1)
+        } else {
+          (itms, ind + 1)
+        }
+    }._1
+  }
+
   def receive = {
     case req: UssdRequest =>
       val currentSender = sender()
@@ -181,7 +192,7 @@ class UssdService extends Actor with ActorLogging {
           val userItems = ItemDbCache.getUserItems(user.id)
           println(userItems)
           if(req.input.length < 1){
-            val response = s"CON 1) Send Receipt\n2) View All Items\n3) Add Item\n 4) Account  "
+            val response = s"CON 1) Send Receipt\n2) View All Items\n3) Add Item\n4) Delete Item\n5) Account  "
             currentSender ! response
           }else{
             val entries = req.input.split('*')
@@ -215,7 +226,7 @@ class UssdService extends Actor with ActorLogging {
                       if(userItems.length >= ReceiptyConfig.maxItemsCount){
                         currentSender ! s"END Limit for Number of items to Add reached (${ReceiptyConfig.maxItemsCount})"
                       }else{
-                        val msg = s"Hello user ${user.id}, to Add items please send so and so to 3340"
+                        val msg = s"Hello, to Add items please send add# and then the items separated by a '#' sign"
                         (messagingService ? SendCustomMessageRequest (
                           msg   = msg ,
                           phone = user.phoneNumber,
@@ -225,9 +236,13 @@ class UssdService extends Actor with ActorLogging {
                             //message sent was succesfully
                             currentSender ! s"END Please check your inbox for a detailed message on how to add items"
                           case SendCustomMessageResponse(false) =>
-                                                                                                                                                                                                                                                                                                                        currentSender ! s"END There was an issue sending you a message for adding Items, please try again "
+                            currentSender ! s"END Unable to send message to add Items"                                                                                                                                                                                                                                                                                         currentSender ! s"END There was an issue sending you a message for adding Items, please try again "
                         }
                       }
+                    case 4 =>
+                      //user wants to delete items
+                      currentSender ! "CON Please Select the Items to delete separated by a comma " + showItemList(userItems)._1
+
 
                   }
                 }catch {
@@ -245,10 +260,9 @@ class UssdService extends Actor with ActorLogging {
                   firstEntry.toInt match {
                     case 1 =>
                       //user has typed in sale separated by a comma
-                      if(!secondEntryString.contains(',')){
-                        val errorMessage = "END Item entries entered are not separated by commas ','"
-                        currentSender ! errorMessage
-                      }else {
+                      if(!secondEntryString.forall(x => {x.isDigit || x == ','})){
+                        currentSender ! "END Inalid Entry, unsupported characters entered"
+                      } else {
                         val itemsNumList = secondEntryString.split(",").map(_.toInt)
                         if (itemsNumList.max > ReceiptyConfig.maxItemsCount) {
                           val msg = "END Entry out of bounds, Maximum entry is 10"
@@ -258,7 +272,19 @@ class UssdService extends Actor with ActorLogging {
                         }
                       }
                     case 4 =>
-                      currentSender ! "END Accounts stuff"
+                      //User wants to delete items
+                      if(!secondEntryString.forall(x => {x.isDigit || x == ','})){
+                        currentSender ! "END Inalid Entry, unsupported characters entered"
+                      }else{
+                        val itemsNumList = secondEntryString.split(",").map(_.toInt)
+                        if (itemsNumList.max > ReceiptyConfig.maxItemsCount) {
+                          val msg = "END Entry out of bounds, Maximum entry is 10"
+                          currentSender ! msg
+                        } else {
+
+                          currentSender ! s"CON Please enter your pin to authenticate this transaction "
+                        }
+                      }
 
                     case _ =>
                       currentSender ! "END Invalid Entry "
@@ -272,9 +298,39 @@ class UssdService extends Actor with ActorLogging {
 
               case 3 =>
                 //here 3rd entry is total amount
+
                 try{
-                  entries(2).toFloat
-                  currentSender ! s"CON Please enter phone Number of Customer in regular format 07XXXXXXXX"
+                  if(entries(0) == "4"){
+                    val password = entries(2)
+                    entries(2).toInt
+                    if(password.length == 4 && ReceiptyUtils.comparePasswords(
+                      password       = password.toInt,
+                      hashedPassword = user.password
+                    )){
+                      val itemsNumList = entries(1).split(",").map(_.toInt)
+                      val itemsToDelete = getUserItemsFromInput(userItems,itemsNumList.toList)
+                      (dbService ? DeleteItemsRequest(
+                        items = itemsToDelete
+                      )).mapTo[DeleteItemsResponse] onComplete {
+                        case Success(payload) => payload match {
+                          case DeleteItemsResponse(true, _) =>
+                            currentSender ! "END Items Successfully deleted"
+                          case DeleteItemsResponse(false, msg) =>
+                            currentSender ! s"END Items Not Deleted because ${msg}"
+                            log.error("Items not deleted for user : {}, errorMsg : {}",user.phoneNumber,msg)
+                        }
+                        case Failure(ex)      =>
+                          currentSender ! "END Internal Error deleting Items, Please retry at a later time "
+                          log.error("Items not deleted for user : {}, errorMsg : {}",user.phoneNumber,ex.getMessage)
+                      }
+                    }else{
+                      currentSender ! "END Invalid Password, please retry and check that it is 4 digits and correct"
+                    }
+                  }else{
+                    entries(2).toFloat
+                    currentSender ! s"CON Please enter phone Number of Customer in regular format 07XXXXXXXX"
+                  }
+
                 }catch {
                   case ex : NumberFormatException =>
                     val response = s"END Invalid Entry. please use numbers "
@@ -299,20 +355,13 @@ class UssdService extends Actor with ActorLogging {
 
               case 5 =>
                 try{
-                  val password = entries(4).toInt
+                  val password          = entries(4).toInt
                   val phoneNumberString = entries(3)
-                  val totalAmount = entries(2).toDouble
-                  val phoneNumber = phoneNumberString.  replaceFirst("0","+254")
+                  val totalAmount       = entries(2).toDouble
+                  val phoneNumber       = phoneNumberString.  replaceFirst("0","+254")
                   val secondEntryString = entries(1)
                   val itemsNumList      = secondEntryString.split(",").map(_.toInt)
-                  val itemsToSell       = userItems.foldLeft((List[ItemDbEntry](), 1)) {
-                    case ((itms, ind), entry) =>
-                      if (itemsNumList.contains(ind)) {
-                        (itms :+ entry, ind + 1)
-                      } else {
-                        (itms, ind + 1)
-                      }
-                  }._1
+                  val itemsToSell       = getUserItemsFromInput(userItems,itemsNumList.toList)
                   if(ReceiptyUtils.comparePasswords(
                     password       = password,
                     hashedPassword = user.password
@@ -331,7 +380,7 @@ class UssdService extends Actor with ActorLogging {
                     (dbService ? SellItemsRequest(sale)).mapTo[SellItemResponse] onComplete {
                       case Success(res) => res match {
                         case SellItemResponse(true , _)   =>
-                          val msg  =  s"Receipt for ${showItemList(itemsToSell)._1} at ${totalAmount} sent to ${phoneNumber}"
+                          val msg  =  s"Receipt\n${showItemList(itemsToSell)._1} \nAt ${totalAmount} KES  sent to ${phoneNumber}"
                           (messagingService ? SendCustomMessageRequest(user.id,msg,phoneNumber)).mapTo[SendCustomMessageResponse] onComplete {
                             case Success(payload) => payload.status match {
                               case true  =>

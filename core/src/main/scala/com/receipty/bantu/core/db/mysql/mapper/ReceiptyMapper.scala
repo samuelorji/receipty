@@ -10,7 +10,10 @@ import com.receipty.bantu.core.db.mysql.ReceiptyMySqlDb
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
 import org.joda.time.{DateTime, LocalDateTime}
 
-object ReceiptyMapper extends ReceiptyMapperT
+object ReceiptyMapper extends ReceiptyMapperT {
+
+
+}
 
 
 private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
@@ -34,6 +37,11 @@ private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
         case None => List()
       }
     }
+  }
+
+  def deleteItemsFromDb(items: List[ItemDbEntry]) = {
+    val query = s"DELETE from item where iid in (${items.mkString(",")}"
+    pool.sendPreparedStatement(query)
   }
 
   def addToOrderTable(sid : Int ,items: List[ItemDbEntry]) = {

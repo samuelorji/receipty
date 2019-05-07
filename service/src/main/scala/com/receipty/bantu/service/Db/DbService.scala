@@ -23,6 +23,9 @@ object DbService {
   case class AddItemsRequest(items : List[ItemDbEntry])
   case class AddItemsResponse(status : Boolean , msg : String)
 
+  case class DeleteItemsRequest(items : List[ItemDbEntry])
+  case class DeleteItemsResponse(status : Boolean , msg : String)
+
   case class Sale(total : Double,phone : String, userId : Int , items : List[ItemDbEntry])
 
 }
@@ -70,6 +73,27 @@ class DbService extends Actor with ActorLogging{
             status = false,
             msg    = ex.getMessage)
       }
+
+    case req : DeleteItemsRequest =>
+      val currentSender = sender()
+      ReceiptyMapper.deleteItemsFromDb(req.items) onComplete{
+        case Success(qr) => if (qr.rowsAffected > 0) {
+          currentSender ! DeleteItemsResponse(
+            status   = true,
+            msg      = qr.statusMessage
+          )
+        } else {
+          currentSender ! DeleteItemsResponse(
+            status = false,
+            msg    = qr.statusMessage
+          )
+        }
+        case Failure(ex) =>
+          currentSender ! DeleteItemsResponse(
+            status = false,
+            msg    = ex.getMessage)
+      }
+
 
     case req : SellItemsRequest =>
       val currentSender = sender()
