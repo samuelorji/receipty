@@ -23,11 +23,6 @@ private [cache] trait ItemDbCacheT extends MySqlDbCacheManagerT[ItemDbEntry]{
 
     setItemMap(x.foldLeft(Map[Int, List[ItemDbEntry]]()) {
       case (l, entry) => l.updated(
-//        if(l.get(entry).isDefined){
-//          entry.id, l(entry.id) :+ entry
-//        }else{
-//          entry.id, entry
-//        }
         entry.owner , x.filter(_.owner == entry.owner)
       )
      }

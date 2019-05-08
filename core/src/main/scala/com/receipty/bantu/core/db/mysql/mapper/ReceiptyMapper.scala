@@ -40,7 +40,8 @@ private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
   }
 
   def deleteItemsFromDb(items: List[ItemDbEntry]) = {
-    val query = s"DELETE from item where iid in (${items.mkString(",")}"
+    println(items.mkString(","))
+    val query = s"DELETE from item where iid in (${items.map(_.id).mkString(",")})"
     pool.sendPreparedStatement(query)
   }
 

@@ -20,14 +20,18 @@ object MysqlDbService{
     province : Int ,
     county :Int ,
     joined : String = ""
-  ) extends MySqlDbCacheEntry
+  ) extends MySqlDbCacheEntry with Ordered[UserDbEntry]  {
+    override def compare(that: UserDbEntry): Int = this.id compare  that.id
+  }
 
   case class ItemDbEntry(
    id : Int ,
    description : String,
    owner  : Int,
    added : String
-   )extends MySqlDbCacheEntry
+   )extends MySqlDbCacheEntry with Ordered[UserDbEntry]  {
+    override def compare(that: UserDbEntry): Int = this.id compare that.id
+  }
 
   case object UserFetchDbQuery
   case object ItemFetchDbQuery

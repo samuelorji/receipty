@@ -236,12 +236,17 @@ class UssdService extends Actor with ActorLogging {
                             //message sent was succesfully
                             currentSender ! s"END Please check your inbox for a detailed message on how to add items"
                           case SendCustomMessageResponse(false) =>
-                            currentSender ! s"END Unable to send message to add Items"                                                                                                                                                                                                                                                                                         currentSender ! s"END There was an issue sending you a message for adding Items, please try again "
+                            currentSender ! s"END Unable to send message to add Items"
                         }
                       }
                     case 4 =>
                       //user wants to delete items
-                      currentSender ! "CON Please Select the Items to delete separated by a comma " + showItemList(userItems)._1
+                      currentSender ! "CON Please Select the Items to delete separated by a comma \n" + showItemList(userItems)._1
+
+                    case 5 =>
+                      currentSender ! "END Accounts Stuff"
+                    case _ =>
+                      currentSender ! "END Invalid Entry "
 
 
                   }
@@ -274,18 +279,17 @@ class UssdService extends Actor with ActorLogging {
                     case 4 =>
                       //User wants to delete items
                       if(!secondEntryString.forall(x => {x.isDigit || x == ','})){
-                        currentSender ! "END Inalid Entry, unsupported characters entered"
+                        currentSender ! "END Invalid Entry, unsupported characters entered"
                       }else{
                         val itemsNumList = secondEntryString.split(",").map(_.toInt)
-                        if (itemsNumList.max > ReceiptyConfig.maxItemsCount) {
-                          val msg = "END Entry out of bounds, Maximum entry is 10"
+                        if (itemsNumList.max > userItems.length) {
+                          val msg = s"END Entry out of bounds, Maximum entry is ${userItems.length}"
                           currentSender ! msg
                         } else {
 
                           currentSender ! s"CON Please enter your pin to authenticate this transaction "
                         }
                       }
-
                     case _ =>
                       currentSender ! "END Invalid Entry "
                   }
@@ -293,7 +297,6 @@ class UssdService extends Actor with ActorLogging {
                   case ex : NumberFormatException =>
                     val errorMessage = s"END, Invalid Entry \nPlease enter the item Numbers separated by a comma ','"
                     currentSender ! errorMessage
-
                 }
 
               case 3 =>
@@ -314,9 +317,9 @@ class UssdService extends Actor with ActorLogging {
                       )).mapTo[DeleteItemsResponse] onComplete {
                         case Success(payload) => payload match {
                           case DeleteItemsResponse(true, _) =>
-                            currentSender ! "END Items Successfully deleted"
+                            currentSender ! "END Items Successfully deleted, please wait for about 2 minutes for the change to reflect"
                           case DeleteItemsResponse(false, msg) =>
-                            currentSender ! s"END Items Not Deleted because ${msg}"
+                            currentSender ! s"END Items Not Deleted because due to internal error"
                             log.error("Items not deleted for user : {}, errorMsg : {}",user.phoneNumber,msg)
                         }
                         case Failure(ex)      =>

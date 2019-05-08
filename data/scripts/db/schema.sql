@@ -75,7 +75,7 @@ sid int(11) NOT NULL,
 iid int(11) NOT NULL,
 PRIMARY KEY (oid),
 FOREIGN KEY (sid) REFERENCES sale(sid),
-FOREIGN KEY (iid) REFERENCES item(iid)
+FOREIGN KEY (iid) REFERENCES item(iid) ON DELETE CASCADE
 );
 
 /*
