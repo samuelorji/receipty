@@ -241,7 +241,12 @@ class UssdService extends Actor with ActorLogging {
                       }
                     case 4 =>
                       //user wants to delete items
-                      currentSender ! "CON Please Select the Items to delete separated by a comma \n" + showItemList(userItems)._1
+                      if(userItems.isEmpty){
+                        currentSender ! "END No Items available to Delete"
+                      }else{
+                        currentSender ! "CON Please Select the Items to delete separated by a comma \n" + showItemList(userItems)._1
+
+                      }
 
                     case 5 =>
                       currentSender ! "END Accounts Stuff"
