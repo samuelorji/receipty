@@ -116,7 +116,7 @@ class MessagingService extends Actor with ActorLogging{
               if(numItemsLength <= ReceiptyConfig.maxItemsCount) {
                 if (userItems.length + numItemsLength > ReceiptyConfig.maxItemsCount) {
                   val errorMsg = s"ERROR:\nItem Limit is ${ReceiptyConfig.maxItemsCount}, you already have ${userItems.length} items in store, you can only add ${ReceiptyConfig.maxItemsCount - userItems.length}"
-                  println(errorMsg)
+
                   sendMessage(
                     message = errorMsg,
                     id = user.id,
@@ -125,9 +125,6 @@ class MessagingService extends Actor with ActorLogging{
                 } else {
                   if (entries.tail.map(_.length).max > 20) {
                     val errMsg = "Length of Items to Add is greater than 20"
-                    println("user wanting to add items more than 20 characters")
-                    println(req.phone)
-                    println(s"Error Message is $errMsg")
                     messageGateway ! SendMessageToClient(
                       phoneNumber     = req.phone,
                       msg             = errMsg,
@@ -183,7 +180,6 @@ class MessagingService extends Actor with ActorLogging{
               else{
                 //TODO send to user that number of items too much
                 val errorMsg = s"ERROR:\nHello User ${user.id}, Number of items to add is more than ${ReceiptyConfig.maxItemsCount}"
-                println(errorMsg)
                 sendMessage(
                   id          = user.id,
                   pNumber     = user.phoneNumber,

@@ -94,7 +94,6 @@ class DbService extends Actor with ActorLogging{
             msg    = ex.getMessage)
       }
 
-
     case req : SellItemsRequest =>
       val currentSender = sender()
 
@@ -144,10 +143,7 @@ class DbService extends Actor with ActorLogging{
           currentSender ! SellItemResponse(
             status = false,
             msg    = ex.getMessage)
-
       }
-
-
 
     case req : GetUserIdRequest =>
       val currentSender = sender()

@@ -190,7 +190,6 @@ class UssdService extends Actor with ActorLogging {
         case Some(user) =>
           //User wants to make a sale
           val userItems = ItemDbCache.getUserItems(user.id)
-          println(userItems)
           if(req.input.length < 1){
             val response = s"CON 1) Send Receipt\n2) View All Items\n3) Add Item\n4) Delete Item\n5) Account  "
             currentSender ! response
@@ -248,8 +247,8 @@ class UssdService extends Actor with ActorLogging {
 
                       }
 
-                    case 5 =>
-                      currentSender ! "END Accounts Stuff"
+//                    case 5 =>
+//                      currentSender ! "END Accounts Stuff"
                     case _ =>
                       currentSender ! "END Invalid Entry "
 
@@ -274,8 +273,8 @@ class UssdService extends Actor with ActorLogging {
                         currentSender ! "END Inalid Entry, unsupported characters entered"
                       } else {
                         val itemsNumList = secondEntryString.split(",").map(_.toInt)
-                        if (itemsNumList.max > ReceiptyConfig.maxItemsCount) {
-                          val msg = "END Entry out of bounds, Maximum entry is 10"
+                        if (itemsNumList.max > ReceiptyConfig.maxItemsCount || itemsNumList.max > userItems.length) {
+                          val msg = s"END Entry out of bounds, Maximum entry is ${userItems.length}"
                           currentSender ! msg
                         } else {
                           currentSender ! s"CON Please enter the total amount of all products sold "
@@ -388,7 +387,8 @@ class UssdService extends Actor with ActorLogging {
                     (dbService ? SellItemsRequest(sale)).mapTo[SellItemResponse] onComplete {
                       case Success(res) => res match {
                         case SellItemResponse(true , _)   =>
-                          val msg  =  s"Receipt\n${showItemList(itemsToSell)._1} \nAt ${totalAmount} KES  sent to ${phoneNumber}"
+                          val formatter = java.text.NumberFormat.getInstance
+                          val msg  =  s"Receipt\n${showItemList(itemsToSell)._1} \nAt ${formatter.format(totalAmount)} KES  sent to ${phoneNumber}"
                           (messagingService ? SendCustomMessageRequest(user.id,msg,phoneNumber)).mapTo[SendCustomMessageResponse] onComplete {
                             case Success(payload) => payload.status match {
                               case true  =>
@@ -526,13 +526,13 @@ class UssdService extends Actor with ActorLogging {
                         }
 
                       case AddUserResponse(false, msg) =>
-                        println(msg)
+
                         log.error("UnSuccessful registration for sessionId:{}, phoneNumber:{}, input:{}, Error : {} ", req.sessionID, req.phoneNumber, req.input, msg)
                         val response = "END Registration Unsuccessful \n Please try registering again  "
                         currentSender ! response
                     }
                     case Failure(ex) =>
-                      println(ex)
+
                       log.error("UnSuccessful registration for sessionId:{}, phoneNumber:{}, input:{}, Error : {} ", req.sessionID, req.phoneNumber, req.input, ex.getMessage)
                       val response = "END Registration Unsuccessful \n Please try registering again  "
                       currentSender ! response
