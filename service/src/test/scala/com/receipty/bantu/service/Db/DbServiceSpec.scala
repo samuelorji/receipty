@@ -11,10 +11,6 @@ import com.receipty.bantu.service.util.ReceiptyUtils
 
 class DbServiceSpec extends TestServiceT {
   val dbService = system.actorOf(Props[DbService])
-//  val userId = 5
-//  val userItems = ItemDbCache.getUserItems(userId)
-
-//  println(userItems)
   "DB service " must {
     "Properly add a valid user " in {
       dbService ! AddUserRequest(

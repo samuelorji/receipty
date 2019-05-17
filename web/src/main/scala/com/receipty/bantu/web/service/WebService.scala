@@ -49,14 +49,15 @@ trait ReceiptyWebServiceT {
       path("messaging" / "callback"){
         post {
           logRequest("messaging:callback",Logging.InfoLevel){
-            entity(as[String]){msg =>
-              println(msg)
-              messagingService ! CustomerMessage(
-                msg   = msg,//# fried rice # jollof rice#charger" ,
-                phone = "+254706800434"
-              )
-              complete(StatusCodes.OK)
-
+            extractRequest { _: HttpRequest => {
+              formFields('from , 'text) {(phoneNumber, text) =>
+                messagingService ! CustomerMessage(
+                  msg   = text,
+                  phone = phoneNumber
+                )
+                complete(StatusCodes.OK)
+              }
+            }
             }
           }
         }

@@ -1,16 +1,8 @@
 package com.receipty.bantu.service.Ussd
 
-import java.security.MessageDigest
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
-import scala.util.{Failure, Success}
 import akka.actor.{Actor, ActorLogging, Props}
-import akka.actor.{Actor, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.github.mauricio.async.db.mysql.message.client.SendLongDataMessage
-import com.receipty._
 import com.receipty.bantu.core.config.ReceiptyConfig
 import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService
@@ -20,6 +12,10 @@ import com.receipty.bantu.service.Db.DbService._
 import com.receipty.bantu.service.Messaging.MessagingService
 import com.receipty.bantu.service.Messaging.MessagingService.{SendCustomMessageRequest, SendCustomMessageResponse, SendRegistrationMessage, SendRegistrationMessageResponse}
 import com.receipty.bantu.service.util.ReceiptyUtils
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 
 object UssdService {
@@ -184,7 +180,7 @@ class UssdService extends Actor with ActorLogging {
   def receive = {
     case req: UssdRequest =>
       val currentSender = sender()
-      val userExist     = UserDbCache.checkIfUserExixsts(req.phoneNumber)
+      val userExist     = UserDbCache.checkIfUserExists(req.phoneNumber)
 
       userExist match {
         case Some(user) =>
@@ -545,7 +541,6 @@ class UssdService extends Actor with ActorLogging {
                 else {
                   val response = "END Passwords do not match "
                   currentSender ! response
-
                 }
             }
           }

@@ -15,7 +15,7 @@ import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, Ite
 object UserDbCache extends UserDbCacheT
 object ItemDbCache extends ItemDbCacheT
 
-private [cache] trait ItemDbCacheT extends MySqlDbCacheManagerT[ItemDbEntry]{
+ trait ItemDbCacheT extends MySqlDbCacheManagerT[ItemDbEntry]{
 
   def getUserItems(uid : Int) = itemMap.getOrElse(uid,List[ItemDbEntry]())
 
@@ -36,15 +36,15 @@ private [cache] trait ItemDbCacheT extends MySqlDbCacheManagerT[ItemDbEntry]{
     itemMap = map
   }
 }
-private[cache] trait UserDbCacheT extends MySqlDbCacheManagerT[UserDbEntry]{
+ trait UserDbCacheT extends MySqlDbCacheManagerT[UserDbEntry]{
 
-  def checkIfUserExixsts(phoneNumber : String) =
+  def checkIfUserExists(phoneNumber : String) =
     userMap.get(phoneNumber)
 
   override def setEntries(x: List[UserDbEntry]): Unit = {
     super.setEntries(x)
 
-    setAuthMap(x.foldLeft(Map[String,UserDbEntry]()){
+    setUserMap(x.foldLeft(Map[String,UserDbEntry]()){
       case (m,entry) => m.updated(
           entry.phoneNumber
         ,entry
@@ -55,7 +55,7 @@ private[cache] trait UserDbCacheT extends MySqlDbCacheManagerT[UserDbEntry]{
   def props = Props(classOf[UserDbCache],this)
   private var userMap = Map[String/* phone number */,UserDbEntry /* user */]()
 
-  private def setAuthMap(map : Map[String ,UserDbEntry]): Unit = {
+  private def setUserMap(map : Map[String ,UserDbEntry]): Unit = {
     userMap = map
   }
 }

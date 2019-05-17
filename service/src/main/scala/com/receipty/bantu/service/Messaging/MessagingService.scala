@@ -7,7 +7,7 @@ import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.receipty.bantu.core.config.ReceiptyConfig
-import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
+import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, ItemDbCacheT, UserDbCache, UserDbCacheT}
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.ItemDbEntry
 import com.receipty.bantu.service.Db.DbService
 import com.receipty.bantu.service.Db.DbService.{AddItemsRequest, AddItemsResponse, GetUserIdRequest, GetUserIdResponse}
@@ -31,11 +31,17 @@ class MessagingService extends Actor with ActorLogging{
   //and then send they user a welcome message showing the format to add items
 
 
-  val dbService        = createDbService
-  def createDbService  = context.actorOf(Props[DbService])
+  private val dbService   = createDbService
+  def createDbService     = context.actorOf(Props[DbService])
 
-  val messageGateway       = createMessageGateway
-  def createMessageGateway = context.actorOf(Props[MessageGateway])
+  private val messageGateway  = createMessageGateway
+  def createMessageGateway    = context.actorOf(Props[MessageGateway])
+
+  private val userDbCache : UserDbCacheT = getUserDbCache
+  def getUserDbCache      : UserDbCacheT = UserDbCache
+
+  private val itemDbCache : ItemDbCacheT  = getItemDbCache
+  def getItemDbCache      : ItemDbCacheT  = ItemDbCache
 
   implicit val timeout = Timeout(5 seconds)
 
@@ -108,27 +114,26 @@ class MessagingService extends Actor with ActorLogging{
       entries(0).toLowerCase match {
         case "add" =>
           //now add items from entries(1) to end
-          val userexist = UserDbCache.checkIfUserExixsts(req.phone)
+          val userexist = userDbCache.checkIfUserExists(req.phone)
           userexist match {
             case Some(user) =>
               val numItemsLength  = entries.length - 1
-              val userItems = ItemDbCache.getUserItems(user.id)
+              val userItems = itemDbCache.getUserItems(user.id)
               if(numItemsLength <= ReceiptyConfig.maxItemsCount) {
                 if (userItems.length + numItemsLength > ReceiptyConfig.maxItemsCount) {
                   val errorMsg = s"ERROR:\nItem Limit is ${ReceiptyConfig.maxItemsCount}, you already have ${userItems.length} items in store, you can only add ${ReceiptyConfig.maxItemsCount - userItems.length}"
-
                   sendMessage(
                     message = errorMsg,
-                    id = user.id,
+                    id      = user.id,
                     pNumber = user.phoneNumber
                   )
                 } else {
                   if (entries.tail.map(_.length).max > 20) {
-                    val errMsg = "Length of Items to Add is greater than 20"
+                    val errMsg = "Length of An Item to Add is greater than 20"
                     messageGateway ! SendMessageToClient(
                       phoneNumber     = req.phone,
                       msg             = errMsg,
-                      id              = 0,
+                      id              = user.id,
                     )
                   } else {
                     val items = entries.foldLeft(List.empty[ItemDbEntry]) {
