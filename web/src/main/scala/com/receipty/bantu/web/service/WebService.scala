@@ -1,18 +1,17 @@
 package com.receipty.bantu.web.service
 
-import scala.concurrent.duration._
-
 import akka.actor.{ActorSystem, Props}
 import akka.event.Logging
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives.{extractRequest, formFields, path, post, _}
 import akka.pattern.ask
 import akka.util.Timeout
-
 import com.receipty.bantu.service.Messaging.MessagingService
 import com.receipty.bantu.service.Messaging.MessagingService.CustomerMessage
 import com.receipty.bantu.service.Ussd.UssdService
 import com.receipty.bantu.service.Ussd.UssdService.UssdRequest
+
+import scala.concurrent.duration._
 
 
 trait ReceiptyWebServiceT {
@@ -65,5 +64,3 @@ trait ReceiptyWebServiceT {
     }
   }
 }
-
-//+254706800434

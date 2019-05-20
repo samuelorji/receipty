@@ -41,7 +41,7 @@ lazy val core = (project in file("core")).
       "com.typesafe.akka"      %% "akka-testkit"         % akkaVersion      % Test,
       "org.scalatest"          %% "scalatest"            % scalaTestVersion % Test
     )
-  )
+  );
 
 lazy val web = (project in file("web")).
   settings(

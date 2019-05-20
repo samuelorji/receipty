@@ -20,7 +20,16 @@ CREATE TABLE `user` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*
-CREATE TABLE user (uid int(11) NOT NULL AUTO_INCREMENT,joined timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,phone varchar(15) NOT NULL,password varchar(64) NOT NULL,province int(5) NOT NULL,county int(5) NOT NULL,PRIMARY KEY (uid),UNIQUE KEY (uid));
+CREATE TABLE user (
+uid int(11) NOT NULL AUTO_INCREMENT,
+joined timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+phone varchar(15) NOT NULL,
+password varchar(64) NOT NULL,
+province int(5) NOT NULL,
+county int(5) NOT NULL,
+PRIMARY KEY (uid),
+UNIQUE KEY (uid)
+);
 
 */
 CREATE TABLE `item` (
