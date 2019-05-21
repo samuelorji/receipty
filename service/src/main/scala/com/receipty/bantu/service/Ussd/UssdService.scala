@@ -249,7 +249,7 @@ class UssdService extends Actor with ActorLogging {
                       }
 
                     case 5 =>
-                      val userDetails = s"PhoneNumber : ${user.phoneNumber}\nProvince : ${provinceMap(user.province)}\nCounty : ${countyMap(provinceMap(user.province))} \n For Customer Care Please call ${ReceiptyConfig.clientRelations} "
+                      val userDetails = s"PhoneNumber : ${user.phoneNumber}\nProvince : ${provinceMap(user.province)}\nCounty : ${countyMap(provinceMap(user.province)).head} \n For Customer Care Please call ${ReceiptyConfig.clientRelations} "
                       currentSender ! s"END $userDetails"
                     case _ =>
                       currentSender ! "END Invalid Entry "
@@ -390,7 +390,7 @@ class UssdService extends Actor with ActorLogging {
                       case Success(res) => res match {
                         case SellItemResponse(true , _)   =>
                           val formatter = java.text.NumberFormat.getInstance
-                          val clientMsg   =  s"Receipt\n${showItemList(itemsToSell)._1} \nAt ${formatter.format(totalAmount)} KES sent to ${phoneNumber}"
+                          val clientMsg   =  s"Receipt\n${showItemList(itemsToSell)._1}At ${formatter.format(totalAmount)} SH sent to ${phoneNumber}"
                           val customerMsg =  s"${sale.items.mkString(",")} -SH${formatter.format(totalAmount)}. Receipty :)"
                           (messagingService ? SendCustomMessageRequest(user.id,customerMsg,phoneNumber)).mapTo[SendCustomMessageResponse] onComplete {
                             case Success(payload) => payload.status match {
