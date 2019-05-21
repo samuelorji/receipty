@@ -198,7 +198,7 @@ class UssdService extends Actor with ActorLogging {
                   firstEntry.toInt match {
                     case 1 =>
                       if(userItems.isEmpty){
-                        val msg      = s"Hi there, Your user Id is ${user.id}, To add items, Life sucks "
+                        val msg      = s"Hi there, your item List is empty, To add items, please send ADD and the items separated by '#' example ADD#Ugali#Rice. Please ensure that the items in store do not exceed 10"
                         (messagingService ? SendCustomMessageRequest(
                           msg   = msg,
                           phone = user.phoneNumber,
@@ -206,16 +206,21 @@ class UssdService extends Actor with ActorLogging {
                         )).mapTo[SendCustomMessageResponse] map {
                           case SendCustomMessageResponse(true) =>
                             //message sent was succesfully
-                            currentSender ! s"END No items Added, Please check your phone for Information regarding adding Items"
+                            currentSender ! s"END No items in store, we have sent you a message on how to add items in order to begin sending receipts"
                           case SendCustomMessageResponse(false) =>
-                            currentSender ! s"END No items Added, There was an issue sending you a message for adding Items,Please Dial the short Code, and select AddItems"
+                            currentSender ! s"END No items in store, Unfortunately, we are having issues sending you messages at this point. Please bear with Us."
                         }
                       }else {
                         val prefix  = s"CON Please Select the Items Sold separated by a comma ','\n"
                         currentSender ! (prefix + showItemList(userItems)._1)
                       }
                     case 2 =>
+                      if(userItems.isEmpty){
+                        currentSender ! "END No Items added, Please send ADD and the items separated by '#' example ADD#Ugali#Rice."
+                      }else{
                         currentSender ! s"END Items : \n" +  showItemList(userItems)._1
+                      }
+
                     case 3 =>
                       //user wants to add items
                       if(userItems.length >= ReceiptyConfig.maxItemsCount){
@@ -237,14 +242,15 @@ class UssdService extends Actor with ActorLogging {
                     case 4 =>
                       //user wants to delete items
                       if(userItems.isEmpty){
-                        currentSender ! "END No Items available to Delete"
+                        currentSender ! "END No items available to Delete"
                       }else{
-                        currentSender ! "CON Please Select the Items to delete separated by a comma \n" + showItemList(userItems)._1
+                        currentSender ! "CON Please select the items to delete separated by a comma \n" + showItemList(userItems)._1
 
                       }
 
-//                    case 5 =>
-//                      currentSender ! "END Accounts Stuff"
+                    case 5 =>
+                      val userDetails = s"PhoneNumber : ${user.phoneNumber}\nProvince : ${provinceMap(user.province)}\nCounty : ${countyMap(provinceMap(user.province))} \n For Customer Care Please call ${ReceiptyConfig.clientRelations} "
+                      currentSender ! s"END $userDetails"
                     case _ =>
                       currentSender ! "END Invalid Entry "
 
@@ -384,11 +390,12 @@ class UssdService extends Actor with ActorLogging {
                       case Success(res) => res match {
                         case SellItemResponse(true , _)   =>
                           val formatter = java.text.NumberFormat.getInstance
-                          val msg  =  s"Receipt\n${showItemList(itemsToSell)._1} \nAt ${formatter.format(totalAmount)} KES  sent to ${phoneNumber}"
-                          (messagingService ? SendCustomMessageRequest(user.id,msg,phoneNumber)).mapTo[SendCustomMessageResponse] onComplete {
+                          val clientMsg   =  s"Receipt\n${showItemList(itemsToSell)._1} \nAt ${formatter.format(totalAmount)} KES sent to ${phoneNumber}"
+                          val customerMsg =  s"${sale.items.mkString(",")} -SH${formatter.format(totalAmount)}. Receipty :)"
+                          (messagingService ? SendCustomMessageRequest(user.id,customerMsg,phoneNumber)).mapTo[SendCustomMessageResponse] onComplete {
                             case Success(payload) => payload.status match {
                               case true  =>
-                                currentSender ! s"END ${msg}"
+                                currentSender ! s"END ${clientMsg}"
                               case false =>
                                 currentSender ! s"END Error Sending message to the customer but sale successfully recorded"
                             }
@@ -457,7 +464,7 @@ class UssdService extends Actor with ActorLogging {
                     val response = s"END Invalid Entry $errorMsg"
                     currentSender ! response
                   } else {
-                    val selectionPrefix = "CON Please Enter a 4 Digit Pin"
+                    val selectionPrefix = "CON Please Enter desired Digit Pin"
                     val response = selectionPrefix
                     currentSender ! response
                   }
@@ -474,10 +481,10 @@ class UssdService extends Actor with ActorLogging {
                 try {
                   entries(2).toInt
                   if (entries(2).length == 4) {
-                    val response = "CON Please Confirm Password"
+                    val response = "CON Please Confirm Pin"
                     currentSender ! response
                   } else {
-                    val errorMsg = s"Password should be 4 digits"
+                    val errorMsg = s"Pin should be 4 digits"
 
                     val response = s"END Invalid Entry \n $errorMsg "
                     currentSender ! response
@@ -508,8 +515,8 @@ class UssdService extends Actor with ActorLogging {
                     case Success(res) => res match {
                       case AddUserResponse(true, _) =>
                         log.info("Successful registration for sessionId:{}, phoneNumber:{}, input:{}", req.sessionID, req.phoneNumber, req.input)
-                        val successResponse = "END Registration Successful \nPlease Check your Messages for user Details "
-                        val errorResponse   = "END Registration Successful \nUnfortunately We are are having technical difficulties sending you your Registration Details\nPlease go to accounts via USSD for Details" +
+                        val successResponse = "END Registration Successful. \nPlease Check your Messages for user Details. "
+                        val errorResponse   = "END Registration Successful. \nUnfortunately We are are having technical difficulties sending you your Registration Details\nPlease go to accounts via USSD for Details" +
                           " please dial the shortcode for account Details "
                         ( messagingService ? SendRegistrationMessage(
                           phoneNumber = req.phoneNumber,

@@ -71,7 +71,7 @@ class DbServiceSpec extends TestServiceT {
     dbService ! DeleteItemsRequest(
       items = List(
         ItemDbEntry(
-          id = 25,
+          id = 24,
           description = "Pick and Peel",
           owner = 5,
           added = ""

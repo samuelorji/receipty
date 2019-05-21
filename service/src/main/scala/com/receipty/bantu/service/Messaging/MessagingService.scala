@@ -8,6 +8,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.receipty.bantu.core.config.ReceiptyConfig
 import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, ItemDbCacheT, UserDbCache, UserDbCacheT}
+import com.receipty.bantu.core.db.mysql.service.MysqlDbService
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.ItemDbEntry
 import com.receipty.bantu.service.Db.DbService
 import com.receipty.bantu.service.Db.DbService.{AddItemsRequest, AddItemsResponse, GetUserIdRequest, GetUserIdResponse}
@@ -54,6 +55,17 @@ class MessagingService extends Actor with ActorLogging{
     )).mapTo[SendMessageToClientResponse]
   }
 
+  private def showItemList(entries: List[MysqlDbService.ItemDbEntry]) = {
+    entries.foldLeft(("",1)){
+      case((str, ind),en) =>
+        if(ind < entries.length){
+          (str + s"${ind}.) ${en.description} \n", ind +1)
+        }else{
+          (str + s"${ind}.) ${en.description} \n", ind)
+        }
+    }
+  }
+
 
   def receive = {
     case req: SendRegistrationMessage =>
@@ -67,7 +79,7 @@ class MessagingService extends Actor with ActorLogging{
           case GetUserIdResponse(true, id) =>
             if(id != 0){
               //now send user message
-              val msg      = s"Welcome To Receipty , Your user Id is ${id}, To add items, please send ADD and the items separated by # example ADD#Ugali#Rice. " +
+              val msg      = s"Welcome To Receipty, To add items, please send ADD and the items separated by # example ADD#Ugali#Rice. " +
                 s"Please ensure that the items do not exceed 10  "
               sendMessage(
                 message = msg,
@@ -155,7 +167,7 @@ class MessagingService extends Actor with ActorLogging{
                         case AddItemsResponse(true, _) =>
                           //TODO ....send message to user that he/she has successfully added items
                           log.info(s"Successfully added items message to user : phone :{} ", req.phone)
-                          val msg = s"Succesfully added $numItemsLength items"
+                          val msg = s"Succesfully added $numItemsLength items\n Items are: \n${showItemList(items)._1}"
                           sendMessage(
                             id = user.id,
                             pNumber = user.phoneNumber,

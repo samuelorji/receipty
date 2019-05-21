@@ -25,7 +25,7 @@ class MessagingServiceSpec extends TestServiceT {
   }))
 
   val phoneNumber = "+2348112172624"
-  val welcomeMessage = "Welcome To Receipty , Your user Id is 5, To add items, please send ADD and the items separated by # example ADD#Ugali#Rice. " + "Please ensure that the items do not exceed 10  "
+  val welcomeMessage = "Welcome To Receipty, To add items, please send ADD and the items separated by # example ADD#Ugali#Rice. Please ensure that the items do not exceed 10  "
 
   val validAddMsg = "ADD#Pick and Peel#Strawberry#Jello#Spaghetti"
   val invalidCharacterOutOfRange = "ADD#Pick and Peellllllllllllllllllllllllll#Strawberry#Jello#Spaghetti"

@@ -30,7 +30,10 @@ object ReceiptyConfig {
   val apikey   = config.getString("bantu.services.credentials.apikey")
   val username = config.getString("bantu.services.credentials.username")
 
-  //val appVariables
-  val maxItemsCount = config.getString("bantu.app.items.max").toInt
+  // appVariables
+  val maxItemsCount   = config.getString("bantu.app.items.max").toInt
+  val clientRelations = config.getString("bantu.help.clientRelations")
+
+  //
 
 }
