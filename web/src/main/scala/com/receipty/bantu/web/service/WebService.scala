@@ -6,6 +6,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives.{extractRequest, formFields, path, post, _}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.receipty.bantu.core.config.ReceiptyConfig
 import com.receipty.bantu.service.Messaging.MessagingService
 import com.receipty.bantu.service.Messaging.MessagingService.CustomerMessage
 import com.receipty.bantu.service.Ussd.UssdService
