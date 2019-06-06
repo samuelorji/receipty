@@ -2,7 +2,7 @@ package com.receipty.bantu.service.util
 
 import scala.xml.{XML}
 
-object MessageParser {
+object GatewayXMLParser {
 
   private def toXML(input : String) = {
     XML.loadString(input)

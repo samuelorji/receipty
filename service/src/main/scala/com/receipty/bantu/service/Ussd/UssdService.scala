@@ -3,19 +3,21 @@ package com.receipty.bantu.service.Ussd
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.ask
 import akka.util.Timeout
+
 import com.receipty.bantu.core.config.ReceiptyConfig
 import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService
-import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
+import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, Sale, UserDbEntry}
 import com.receipty.bantu.service.Db.DbService
 import com.receipty.bantu.service.Db.DbService._
 import com.receipty.bantu.service.Messaging.MessagingService
 import com.receipty.bantu.service.Messaging.MessagingService.{SendCustomMessageRequest, SendCustomMessageResponse, SendRegistrationMessage, SendRegistrationMessageResponse}
 import com.receipty.bantu.service.util.ReceiptyUtils
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+
+import com.receipty.bantu.core.message.action.MessageParser.Sale
 
 
 object UssdService {
@@ -377,7 +379,7 @@ class UssdService extends Actor with ActorLogging {
                   )){
 
                     //here a successful sale has been made
-                    import DbService.Sale
+
 
                     val sale = Sale(
                       total  = totalAmount,

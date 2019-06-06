@@ -8,7 +8,7 @@ import akka.http.scaladsl.model.headers.RawHeader
 import com.receipty.bantu.core.config.ReceiptyConfig
 import com.receipty.bantu.service.Messaging.MessageGateway
 import com.receipty.bantu.service.Messaging.MessageGateway.{SendMessageToClient, SendMessageToClientResponse}
-import com.receipty.bantu.service.util.{HttpClient, MessageParser}
+import com.receipty.bantu.service.util.{HttpClient, GatewayXMLParser}
 
 object MessageGateway {
   case class SendMessageToClient( id : Int, phoneNumber : String, msg : String)
@@ -39,7 +39,7 @@ private[Messaging] class MessageGateway extends Actor
     response onComplete {
       case Success(res) => res.status.isSuccess() match {
         case true  =>
-          MessageParser.getMessageStatusCode(res.data) match {
+          GatewayXMLParser.getMessageStatusCode(res.data) match {
             case x if x.contains("10") =>
               currentSender ! SendMessageToClientResponse(true)
               log.info("Successfully sent message to user id:{}, phoneNumber :{} , msgReceived : {}",req.id,req.phoneNumber, res.data)

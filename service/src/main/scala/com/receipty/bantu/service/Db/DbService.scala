@@ -8,6 +8,7 @@ import akka.actor.{Actor, ActorLogging}
 import com.receipty._
 import com.receipty.bantu.core.db.mysql.mapper.ReceiptyMapper
 import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
+import com.receipty.bantu.core.message.action.MessageParser.Sale
 
 
 object DbService {
@@ -26,7 +27,7 @@ object DbService {
   case class DeleteItemsRequest(items : List[ItemDbEntry])
   case class DeleteItemsResponse(status : Boolean , msg : String)
 
-  case class Sale(total : Double,phone : String, userId : Int , items : List[ItemDbEntry])
+
 
 }
 

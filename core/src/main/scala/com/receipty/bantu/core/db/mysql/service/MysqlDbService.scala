@@ -13,6 +13,8 @@ import bantu.core.db.mysql.mapper.ReceiptyMapper
 import bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, ItemFetchDbQuery, UserDbEntry, UserFetchDbQuery}
 
 object MysqlDbService{
+  sealed trait Data
+
   case class UserDbEntry (
     id: Int = 0,
     phoneNumber: String,
@@ -20,7 +22,7 @@ object MysqlDbService{
     province : Int ,
     county :Int ,
     joined : String = ""
-  ) extends MySqlDbCacheEntry with Ordered[UserDbEntry]  {
+  ) extends MySqlDbCacheEntry with Ordered[UserDbEntry] with Data {
     override def compare(that: UserDbEntry): Int = this.id compare  that.id
   }
 
@@ -29,9 +31,16 @@ object MysqlDbService{
    description : String,
    owner  : Int,
    added : String
-   )extends MySqlDbCacheEntry with Ordered[UserDbEntry]  {
+   )extends MySqlDbCacheEntry with Ordered[UserDbEntry] with Data   {
     override def compare(that: UserDbEntry): Int = this.id compare that.id
   }
+  case class Sale(
+   total : Double,
+   phone : String,
+   userId : Int,
+   items : List[ItemDbEntry]
+ ) extends Data
+
 
   case object UserFetchDbQuery
   case object ItemFetchDbQuery
