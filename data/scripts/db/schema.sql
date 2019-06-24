@@ -25,8 +25,8 @@ uid int(11) NOT NULL AUTO_INCREMENT,
 joined timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 phone varchar(15) NOT NULL,
 password varchar(64) NOT NULL,
-province int(5) NOT NULL,
-county int(5) NOT NULL,
+natureOfBusiness int(1) NOT NULL,
+businessName varchar(20) NOT NULL,
 PRIMARY KEY (uid),
 UNIQUE KEY (uid)
 );
@@ -47,6 +47,7 @@ CREATE TABLE item (
 iid int(11) NOT NULL AUTO_INCREMENT,
 added timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 description varchar(20) NOT NULL,
+alias varchar(10) NOT NULL,
 owner int(11) NOT NULL,
 PRIMARY KEY (iid),
 FOREIGN KEY (owner) REFERENCES user(uid)

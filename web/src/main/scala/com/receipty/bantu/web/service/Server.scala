@@ -20,6 +20,7 @@ object Server extends App {
     }.routes,
     ReceiptyConfig.host, ReceiptyConfig.port)
 
+
   def initializeCache = {
     system.actorOf(UserDbCache.props)
     system.actorOf(ItemDbCache.props)

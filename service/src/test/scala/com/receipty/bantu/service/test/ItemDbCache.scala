@@ -39,9 +39,7 @@ object UserDbCache extends UserDbCacheT {
     Some(UserDbEntry(
       id          = 5,
       phoneNumber = "+2348112172624",
-      password    = ReceiptyUtils.hashPassword("1234"),
-      province    = 3,
-      county      = 3
+      password    = ReceiptyUtils.hashPassword("1234")
     ))
   }
 }

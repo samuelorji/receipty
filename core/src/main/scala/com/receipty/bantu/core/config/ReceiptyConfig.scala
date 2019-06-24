@@ -5,6 +5,8 @@ import com.typesafe.config.ConfigFactory
 
 object ReceiptyConfig {
 
+
+
   val config = ConfigFactory.load
 
   //MySql
@@ -31,8 +33,10 @@ object ReceiptyConfig {
   val username = config.getString("bantu.services.credentials.username")
 
   // appVariables
-  val maxItemsCount   = config.getString("bantu.app.items.max").toInt
-  val clientRelations = config.getString("bantu.help.clientRelations")
+  val maxItemsCount              = config.getInt("bantu.app.items.max-number-items")
+  val clientRelations            = config.getString("bantu.help.client-relations")
+  val itemMaxCharacterCount      = config.getInt("bantu.app.items.max-character-count")
+  val itemAliasMaxCharacterCount = config.getInt("bantu.app.items.max-alias-character-count")
 
   //
 

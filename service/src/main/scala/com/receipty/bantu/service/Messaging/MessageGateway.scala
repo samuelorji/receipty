@@ -7,12 +7,12 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
 import com.receipty.bantu.core.config.ReceiptyConfig
 import com.receipty.bantu.service.Messaging.MessageGateway
-import com.receipty.bantu.service.Messaging.MessageGateway.{SendMessageToClient, SendMessageToClientResponse}
+import com.receipty.bantu.service.Messaging.MessageGateway.{SendMessageRequest, SendMessageResponse}
 import com.receipty.bantu.service.util.{HttpClient, GatewayXMLParser}
 
 object MessageGateway {
-  case class SendMessageToClient( id : Int, phoneNumber : String, msg : String)
-  case class SendMessageToClientResponse(status : Boolean)
+  case class SendMessageRequest(id : Int, recepient : String, msg : String)
+  case class SendMessageResponse(status : Boolean)
 
 }
 private[Messaging] class MessageGateway extends Actor
@@ -21,14 +21,14 @@ private[Messaging] class MessageGateway extends Actor
 
   implicit val system: ActorSystem = context.system
   def receive = {
-    case req : SendMessageToClient =>
+    case req : SendMessageRequest =>
       val currentSender = sender()
       val response = for {
       resp <- makeHttpRequest(
         HttpRequest(
         HttpMethods.POST,
         uri      = ReceiptyConfig.MessageEndpoint,
-        entity   = FormData("username" -> ReceiptyConfig.username,"to" -> req.phoneNumber,"message" -> req.msg).toEntity(HttpCharsets.`UTF-8`)
+        entity   = FormData("username" -> ReceiptyConfig.username,"to" -> req.recepient,"message" -> req.msg).toEntity(HttpCharsets.`UTF-8`)
        ).withHeaders(List(
           RawHeader("apikey", ReceiptyConfig.apikey),
           RawHeader("Content-Type", "application/x-www-form-urlencoded")
@@ -41,21 +41,21 @@ private[Messaging] class MessageGateway extends Actor
         case true  =>
           GatewayXMLParser.getMessageStatusCode(res.data) match {
             case x if x.contains("10") =>
-              currentSender ! SendMessageToClientResponse(true)
-              log.info("Successfully sent message to user id:{}, phoneNumber :{} , msgReceived : {}",req.id,req.phoneNumber, res.data)
+              currentSender ! SendMessageResponse(true)
+              log.info("Successfully sent message to user id:{}, phoneNumber :{} , msgReceived : {}",req.id,req.recepient, res.data)
             case _                      =>
-              currentSender ! SendMessageToClientResponse(false)
-              log.info("problem sending message to user id:{}, phoneNumber :{} , msgReceived : {}",req.id,req.phoneNumber, res.data)
+              currentSender ! SendMessageResponse(false)
+              log.info("problem sending message to user id:{}, phoneNumber :{} , msgReceived : {}",req.id,req.recepient, res.data)
           }
 
 
         case false =>
-          currentSender ! SendMessageToClientResponse(false)
-          log.info("Failure sending message to user id:{}, phoneNumber :{}, msgReceived : {} ",req.id,req.phoneNumber,res.data)
+          currentSender ! SendMessageResponse(false)
+          log.info("Failure sending message to user id:{}, phoneNumber :{}, msgReceived : {} ",req.id,req.recepient,res.data)
       }
       case Failure(ex)  =>
-        currentSender ! SendMessageToClientResponse(false)
-        log.error("Error contacting Message Broker for user id:{}, phoneNumber :{}, Error : {} ", req.id,req.phoneNumber,ex.getMessage)
+        currentSender ! SendMessageResponse(false)
+        log.error("Error contacting Message Broker for user id:{}, phoneNumber :{}, Error : {} ", req.id,req.recepient,ex.getMessage)
     }
 
 

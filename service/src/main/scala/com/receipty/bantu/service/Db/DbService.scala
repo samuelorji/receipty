@@ -7,8 +7,8 @@ import akka.actor.{Actor, ActorLogging}
 
 import com.receipty._
 import com.receipty.bantu.core.db.mysql.mapper.ReceiptyMapper
-import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
-import com.receipty.bantu.core.message.action.MessageParser.Sale
+import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, Sale, UserDbEntry}
+import com.receipty.bantu.core.message.action.MessageParser
 
 
 object DbService {

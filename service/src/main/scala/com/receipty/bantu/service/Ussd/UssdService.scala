@@ -17,8 +17,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-import com.receipty.bantu.core.message.action.MessageParser.Sale
-
+import com.receipty.bantu.core.utils.ReceiptyCoreUtils
 
 object UssdService {
   case class UssdRequest(
@@ -55,6 +54,7 @@ class UssdService extends Actor with ActorLogging {
     )
 
 
+
   private def showCounty(selection: Int): String = {
     def prefix(prov: String) = s"Please Select Your County under ${prov}\n"
 
@@ -65,44 +65,44 @@ class UssdService extends Actor with ActorLogging {
 
       case 2 =>
         val counties = countyMap(provinceMap(2))
-        val string = createCountyMenu(counties)._1
+        val string = createStringFromList(counties)._1
         prefix(provinceMap(2)) + string
 
       case 3 =>
         val counties = countyMap(provinceMap(3))
-        val string = createCountyMenu(counties)._1
+        val string = createStringFromList(counties)._1
         prefix(provinceMap(3)) + string
 
       case 4 =>
         val counties = countyMap(provinceMap(4))
-        val string = createCountyMenu(counties)._1
+        val string = createStringFromList(counties)._1
         prefix(provinceMap(4)) + string
 
 
       case 5 =>
         val counties = countyMap(provinceMap(5))
-        val string = createCountyMenu(counties)._1
+        val string = createStringFromList(counties)._1
         prefix(provinceMap(5)) + string
 
 
       case 6 =>
         val counties = countyMap(provinceMap(6))
-        val string = createCountyMenu(counties)._1
+        val string = createStringFromList(counties)._1
         prefix(provinceMap(6)) + string
 
       case 7 =>
         val counties = countyMap(provinceMap(7))
-        val string = createCountyMenu(counties)._1
+        val string = createStringFromList(counties)._1
         prefix(provinceMap(7)) + string
 
       case 8 =>
         val counties = countyMap(provinceMap(8))
-        val string = createCountyMenu(counties)._1
+        val string = createStringFromList(counties)._1
         prefix(provinceMap(8)) + string
     }
   }
 
-  private def createCountyMenu(counties: List[String]) = {
+  private def createStringFromList(counties: List[String]) = {
 
     counties.foldLeft(("", 1)) {
       case ((str, ind), county) =>
@@ -161,9 +161,9 @@ class UssdService extends Actor with ActorLogging {
     entries.foldLeft(("",1)){
       case((str, ind),en) =>
         if(ind < entries.length){
-          (str + s"${ind}.) ${en.description} \n", ind +1)
+          (str + s"${ind}.) ${en.alias} \n", ind +1)
         }else{
-          (str + s"${ind}.) ${en.description} \n", ind)
+          (str + s"${ind}.) ${en.alias} \n", ind)
         }
     }
   }
@@ -177,6 +177,10 @@ class UssdService extends Actor with ActorLogging {
           (itms, ind + 1)
         }
     }._1
+  }
+
+  private def showNatureOfBusiness = {
+    createStringFromList(ReceiptyCoreUtils.natureOfBusinessMap.values.toList)
   }
 
   def receive = {
@@ -200,7 +204,7 @@ class UssdService extends Actor with ActorLogging {
                   firstEntry.toInt match {
                     case 1 =>
                       if(userItems.isEmpty){
-                        val msg      = s"Hi there, your item List is empty, To add items, please send ADD and the items separated by '#' example ADD#Ugali#Rice. Please ensure that the items in store do not exceed 10"
+                        val msg      = s"Hi there, your item List is empty, To add items, please send ADD and the items separated by '#' example ADD#Ugali#Rice. Please ensure that the items in store do not exceed ${ReceiptyConfig.maxItemsCount}"
                         (messagingService ? SendCustomMessageRequest(
                           msg   = msg,
                           phone = user.phoneNumber,
@@ -217,6 +221,7 @@ class UssdService extends Actor with ActorLogging {
                         currentSender ! (prefix + showItemList(userItems)._1)
                       }
                     case 2 =>
+                      //View All Items (terminal)
                       if(userItems.isEmpty){
                         currentSender ! "END No Items added, Please send ADD and the items separated by '#' example ADD#Ugali#Rice."
                       }else{
@@ -224,7 +229,7 @@ class UssdService extends Actor with ActorLogging {
                       }
 
                     case 3 =>
-                      //user wants to add items
+                      //Add items (Either items max reached)
                       if(userItems.length >= ReceiptyConfig.maxItemsCount){
                         currentSender ! s"END Limit for Number of items to Add reached (${ReceiptyConfig.maxItemsCount})"
                       }else{
@@ -242,17 +247,17 @@ class UssdService extends Actor with ActorLogging {
                         }
                       }
                     case 4 =>
-                      //user wants to delete items
+                      //user wants to delete items (Initial Stage)
                       if(userItems.isEmpty){
                         currentSender ! "END No items available to Delete"
                       }else{
                         currentSender ! "CON Please select the items to delete separated by a comma \n" + showItemList(userItems)._1
-
                       }
 
                     case 5 =>
-                      val userDetails = s"PhoneNumber : ${user.phoneNumber}\nProvince : ${provinceMap(user.province)}\nCounty : ${countyMap(provinceMap(user.province)).head} \n For Customer Care Please call ${ReceiptyConfig.clientRelations} "
-                      currentSender ! s"END $userDetails"
+                      //User Details
+                     // val userDetails = s"PhoneNumber : ${user.phoneNumber}\nProvince : ${provinceMap(user.businessName)}\nCounty : ${countyMap(provinceMap(user.businessName)).head} \n For Customer Care Please call ${ReceiptyConfig.clientRelations} "
+                      currentSender ! s"END Go Home "
                     case _ =>
                       currentSender ! "END Invalid Entry "
 
@@ -264,6 +269,10 @@ class UssdService extends Actor with ActorLogging {
                     currentSender ! response
 
                 }
+
+                /*
+                Second Level of USSD App
+                 */
               case 2 =>
                 //user probably entered 1* or 2*
                 val secondEntryString = entries(1)
@@ -272,6 +281,7 @@ class UssdService extends Actor with ActorLogging {
                   val firstEntry = entries(0)
                   firstEntry.toInt match {
                     case 1 =>
+                      //User initially pressed "Make a Sale"
                       //user has typed in sale separated by a comma
                       if(!secondEntryString.forall(x => {x.isDigit || x == ','})){
                         currentSender ! "END Inalid Entry, unsupported characters entered"
@@ -285,6 +295,7 @@ class UssdService extends Actor with ActorLogging {
                         }
                       }
                     case 4 =>
+                      //User initially pressed "Delete Items"
                       //User wants to delete items
                       if(!secondEntryString.forall(x => {x.isDigit || x == ','})){
                         currentSender ! "END Invalid Entry, unsupported characters entered"
@@ -294,7 +305,6 @@ class UssdService extends Actor with ActorLogging {
                           val msg = s"END Entry out of bounds, Maximum entry is ${userItems.length}"
                           currentSender ! msg
                         } else {
-
                           currentSender ! s"CON Please enter your pin to authenticate this transaction "
                         }
                       }
@@ -302,7 +312,7 @@ class UssdService extends Actor with ActorLogging {
                       currentSender ! "END Invalid Entry "
                   }
                 }catch {
-                  case ex : NumberFormatException =>
+                  case _ : NumberFormatException =>
                     val errorMessage = s"END, Invalid Entry \nPlease enter the item Numbers separated by a comma ','"
                     currentSender ! errorMessage
                 }
@@ -311,44 +321,49 @@ class UssdService extends Actor with ActorLogging {
                 //here 3rd entry is total amount
 
                 try{
-                  if(entries(0) == "4"){
-                    val password = entries(2)
-                    entries(2).toInt
-                    if(password.length == 4 && ReceiptyUtils.comparePasswords(
-                      password       = password.toInt,
-                      hashedPassword = user.password
-                    )){
-                      val itemsNumList = entries(1).split(",").map(_.toInt)
-                      val itemsToDelete = getUserItemsFromInput(userItems,itemsNumList.toList)
-                      (dbService ? DeleteItemsRequest(
-                        items = itemsToDelete
-                      )).mapTo[DeleteItemsResponse] onComplete {
-                        case Success(payload) => payload match {
-                          case DeleteItemsResponse(true, _) =>
-                            currentSender ! "END Items Successfully deleted, please wait for about 2 minutes for the change to reflect"
-                          case DeleteItemsResponse(false, msg) =>
-                            currentSender ! s"END Items Not Deleted because due to internal error"
-                            log.error("Items not deleted for user : {}, errorMsg : {}",user.phoneNumber,msg)
+                  entries(0) == "4" match {
+                    //user is in the delete cycle (deletion stage terminates here)
+                    case true =>
+                      val password = entries(2)
+                      entries(2).toInt
+                      if (password.length == 4 && ReceiptyUtils.comparePasswords(
+                        password       = password.toInt,
+                        hashedPassword = user.password
+                      )) {
+                        val itemsNumList  = entries(1).split(",").map(_.toInt)
+                        val itemsToDelete = getUserItemsFromInput(userItems, itemsNumList.toList)
+                        (dbService ? DeleteItemsRequest(
+                          items = itemsToDelete
+                        )).mapTo[DeleteItemsResponse] onComplete {
+                          case Success(payload) => payload match {
+                            case DeleteItemsResponse(true, _) =>
+                              currentSender ! "END Items Successfully deleted, please wait for about 2 minutes for the change to reflect"
+                            case DeleteItemsResponse(false, msg) =>
+                              currentSender ! s"END Items Not Deleted because due to internal error"
+                              log.error("Items not deleted for user : {}, errorMsg : {}", user.phoneNumber, msg)
+                          }
+                          case Failure(ex) =>
+                            currentSender ! "END Internal Error deleting Items, Please retry at a later time "
+                            log.error("Items not deleted for user : {}, errorMsg : {}", user.phoneNumber, ex.getMessage)
                         }
-                        case Failure(ex)      =>
-                          currentSender ! "END Internal Error deleting Items, Please retry at a later time "
-                          log.error("Items not deleted for user : {}, errorMsg : {}",user.phoneNumber,ex.getMessage)
+                      } else {
+                        currentSender ! "END Invalid Password, please retry and check that it is 4 digits and correct"
                       }
-                    }else{
-                      currentSender ! "END Invalid Password, please retry and check that it is 4 digits and correct"
-                    }
-                  }else{
-                    entries(2).toFloat
-                    currentSender ! s"CON Please enter phone Number of Customer in regular format 07XXXXXXXX"
+
+                      //User is in make Sale cycle
+                    case false =>
+                      entries(2).toFloat
+                      currentSender ! s"CON Please enter phone Number of Customer in regular format 07XXXXXXXX"
                   }
 
                 }catch {
-                  case ex : NumberFormatException =>
+                  case _ : NumberFormatException =>
                     val response = s"END Invalid Entry. please use numbers "
                     currentSender ! response
                 }
               case 4 =>
 
+                //Make sale from here on
                 try{
                   val phoneNumberString = entries(3)
                     phoneNumberString.toLong
@@ -359,7 +374,7 @@ class UssdService extends Actor with ActorLogging {
                     currentSender ! s"END Invalid Phone Number"
                   }
                 }catch {
-                  case ex : NumberFormatException =>
+                  case _ : NumberFormatException =>
                     val response = s"END Invalid Entry. please use numbers "
                     currentSender ! response
                 }
@@ -377,10 +392,7 @@ class UssdService extends Actor with ActorLogging {
                     password       = password,
                     hashedPassword = user.password
                   )){
-
                     //here a successful sale has been made
-
-
                     val sale = Sale(
                       total  = totalAmount,
                       phone  = phoneNumber,
@@ -394,8 +406,12 @@ class UssdService extends Actor with ActorLogging {
                           val formatter = java.text.NumberFormat.getInstance
                           val clientMsg   =  s"Receipt\n${showItemList(itemsToSell)._1}At ${formatter.format(totalAmount)} SH sent to ${phoneNumber}"
                           val customerMsg =  s"${sale.items.mkString(",")} -SH${formatter.format(totalAmount)}. Receipty :)"
-                          (messagingService ? SendCustomMessageRequest(user.id,customerMsg,phoneNumber)).mapTo[SendCustomMessageResponse] onComplete {
-                            case Success(payload) => payload.status match {
+                          (messagingService ? SendCustomMessageRequest(
+                            id    = user.id,
+                            msg   = customerMsg,
+                            phone = phoneNumber)
+                            ).mapTo[SendCustomMessageResponse] onComplete {
+                            case Success(payload) => payload.status match { 
                               case true  =>
                                 currentSender ! s"END ${clientMsg}"
                               case false =>
@@ -432,38 +448,49 @@ class UssdService extends Actor with ActorLogging {
           //  New User
           if (req.input.length < 1) {
             //here the app just started so user input is 0
-            val response = s"CON Welcome to Receipty\nTo continue with registration..\nPlease Select a province...\n ${provinceSelection}"
+            val response = s"CON Welcome to Receipty\nTo continue with registration..\nPlease enter your Business Name..."
             currentSender ! response
           } else {
             //Add User
             val entries = req.input.split('*')
             entries.length match {
               case 1 =>
-                val provinceEntry = entries(0)
-                try {
-                  val provinceNum = provinceEntry.toInt
-                  if (provinceNum <= 8 && provinceNum != 0) {
-                    val response = showCounties(provinceNum)
-                    currentSender ! response
-                  } else {
-                    val errorMsg = s"Invalid Entry $provinceEntry"
-                    val response = s"END $errorMsg "
-                    currentSender ! response
-                  }
-                } catch {
-                  case _: NumberFormatException =>
-                    val response = s"END Invalid Entry. please use numbers "
-                    currentSender ! response
+                //user just entered business name
+                val businessName = entries(0).trim
+                println(businessName.length)
 
+                (businessName.length > 20) match {
+                  case false  =>
+                    val msg = s"CON Please select your nature of business\n ${showNatureOfBusiness._1} "
+                    currentSender ! msg
+                  case true =>
+                    val msg = "END Business name is more than 20 characters"
+                    currentSender ! msg
                 }
+//                try {
+//                  val provinceNum = provinceEntry.toInt
+//                  if (provinceNum <= 8 && provinceNum != 0) {
+//                    val response = showCounties(provinceNum)
+//                    currentSender ! response
+//                  } else {
+//                    val errorMsg = s"Invalid Entry $provinceEntry"
+//                    val response = s"END $errorMsg "
+//                    currentSender ! response
+//                  }
+//                } catch {
+//                  case _: NumberFormatException =>
+//                    val response = s"END Invalid Entry. please use numbers "
+//                    currentSender ! response
+//
+//                }
 
               case 2 =>
                 try {
-                  val countyEntry = entries(1).toInt
-                  val provinceEntry = entries(0).toInt
-                  if (countyEntry > countyMap(provinceMap(provinceEntry)).length || countyEntry == 0) {
-                    val errorMsg = s"Invalid Entry $countyEntry"
-                    val response = s"END Invalid Entry $errorMsg"
+                  val natureOfBusiness = entries(1).toInt
+
+                  if (natureOfBusiness > ReceiptyCoreUtils.natureOfBusinessMap.values.size || natureOfBusiness < 1) {
+                    val errorMsg = s"Invalid Entry ${entries(1)}.\nValues should be between 1 and ${ReceiptyCoreUtils.natureOfBusinessMap.values.size}"
+                    val response = s"END $errorMsg"
                     currentSender ! response
                   } else {
                     val selectionPrefix = "CON Please Enter desired Digit Pin"
@@ -507,10 +534,10 @@ class UssdService extends Actor with ActorLogging {
                   //here we hash the users password and then input into database
                   val pin = ReceiptyUtils.hashPassword(password)
                   val user = UserDbEntry(
-                    phoneNumber = req.phoneNumber,
-                    province    = entries(0).toInt,
-                    county      = entries(1).toInt,
-                    password    = pin
+                    phoneNumber      = req.phoneNumber,
+                    businessName     = entries(0),
+                    natureOfBusiness = entries(1).toInt,
+                    password         = pin
                   )
 
                   (dbService ? AddUserRequest(user)).mapTo[AddUserResponse] onComplete {
@@ -521,6 +548,7 @@ class UssdService extends Actor with ActorLogging {
                         val errorResponse   = "END Registration Successful. \nUnfortunately We are are having technical difficulties sending you your Registration Details\nPlease go to accounts via USSD for Details" +
                           " please dial the shortcode for account Details "
                         ( messagingService ? SendRegistrationMessage(
+                          user        = user,
                           phoneNumber = req.phoneNumber,
                           sessionId   = req.sessionID
                         )).mapTo[SendRegistrationMessageResponse] map {

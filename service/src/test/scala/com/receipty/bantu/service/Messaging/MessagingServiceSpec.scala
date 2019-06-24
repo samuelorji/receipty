@@ -2,12 +2,14 @@ package com.receipty.bantu.service.Messaging
 
 import akka.actor.Props
 import akka.testkit.TestProbe
+
 import com.receipty.bantu.core.config.ReceiptyConfig
 import com.receipty.bantu.core.db.mysql.cache
-
 import scala.concurrent.duration._
+
+import com.receipty.bantu.core.db.mysql.service.MysqlDbService.UserDbEntry
 import com.receipty.bantu.service.Db.DbService.{AddItemsRequest, AddItemsResponse, GetUserIdRequest, GetUserIdResponse}
-import com.receipty.bantu.service.Messaging.MessageGateway.{SendMessageToClient, SendMessageToClientResponse}
+import com.receipty.bantu.service.Messaging.MessageGateway.{SendMessageRequest, SendMessageResponse}
 import com.receipty.bantu.service.Messaging.MessagingService._
 import com.receipty.bantu.service.test._
 
@@ -36,7 +38,11 @@ class MessagingServiceSpec extends TestServiceT {
     "Handle Sending Registration Message " in {
       messagingService ! SendRegistrationMessage(
         sessionId   = "sessionId",
-        phoneNumber = phoneNumber
+        phoneNumber = phoneNumber,
+        user        = UserDbEntry(
+          phoneNumber = "",
+          password    = ""
+        )
       )
 
       dbService.expectMsg(GetUserIdRequest(
@@ -47,12 +53,12 @@ class MessagingServiceSpec extends TestServiceT {
         id     = 5
       ))
 
-      messageGateway .expectMsg(SendMessageToClient(
+      messageGateway .expectMsg(SendMessageRequest(
         id          = 5 ,
-        phoneNumber = phoneNumber,
+        recepient = phoneNumber,
         msg         = welcomeMessage
       ))
-      messageGateway.reply(SendMessageToClientResponse(
+      messageGateway.reply(SendMessageResponse(
         status = true
       ))
       expectMsg(SendRegistrationMessageResponse(true))
@@ -66,12 +72,12 @@ class MessagingServiceSpec extends TestServiceT {
         phone = phoneNumber
       )
 
-      messageGateway .expectMsg(SendMessageToClient(
+      messageGateway .expectMsg(SendMessageRequest(
         id          = 5 ,
-        phoneNumber = phoneNumber,
+        recepient = phoneNumber,
         msg         = welcomeMessage
       ))
-      messageGateway.reply(SendMessageToClientResponse(
+      messageGateway.reply(SendMessageResponse(
         status = true
       ))
       expectMsg(SendCustomMessageResponse(true))
@@ -85,12 +91,12 @@ class MessagingServiceSpec extends TestServiceT {
         phone = phoneNumber + "9090909090"
       )
 
-      messageGateway .expectMsg(SendMessageToClient(
+      messageGateway .expectMsg(SendMessageRequest(
         id          = 5 ,
-        phoneNumber = phoneNumber + "9090909090",
+        recepient = phoneNumber + "9090909090",
         msg         = "hello"
       ))
-      messageGateway.reply(SendMessageToClientResponse(
+      messageGateway.reply(SendMessageResponse(
         status = false
       ))
       expectMsg(SendCustomMessageResponse(false))
@@ -103,9 +109,9 @@ class MessagingServiceSpec extends TestServiceT {
         phone    = phoneNumber
       )
       val errorMsg = s"ERROR:\nItem Limit is ${ReceiptyConfig.maxItemsCount}, you already have ${ItemDbCache.getUserItems(23).length} items in store, you can only add ${ReceiptyConfig.maxItemsCount - ItemDbCache.getUserItems(23).length}"
-      messageGateway.expectMsg(SendMessageToClient(
+      messageGateway.expectMsg(SendMessageRequest(
         id          = 5,
-        phoneNumber = phoneNumber,
+        recepient = phoneNumber,
         msg         = errorMsg
       ))
       expectNoMessage(100 milliseconds)
@@ -119,9 +125,9 @@ class MessagingServiceSpec extends TestServiceT {
       )
 
       val errorMsg = s"ERROR:\nHello User ${5}, Number of items to add is more than ${ReceiptyConfig.maxItemsCount}"
-      messageGateway.expectMsg(SendMessageToClient(
+      messageGateway.expectMsg(SendMessageRequest(
         id          = 5,
-        phoneNumber = phoneNumber,
+        recepient = phoneNumber,
         msg         = errorMsg
       ))
       expectNoMessage(100 milliseconds)
@@ -136,9 +142,9 @@ class MessagingServiceSpec extends TestServiceT {
       )
 
       val errMsg = "Length of An Item to Add is greater than 20"
-       messageGateway.expectMsg(SendMessageToClient(
+       messageGateway.expectMsg(SendMessageRequest(
         id          = 5,
-        phoneNumber = phoneNumber,
+        recepient = phoneNumber,
         msg         = errMsg
       ))
       expectNoMessage(100 milliseconds)

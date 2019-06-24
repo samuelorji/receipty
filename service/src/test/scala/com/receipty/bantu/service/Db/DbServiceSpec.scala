@@ -1,10 +1,11 @@
 package com.receipty.bantu.service.Db
 
 import akka.actor.Props
-import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 
+import com.receipty.bantu.core.db.mysql.cache.{ItemDbCache, UserDbCache}
 import scala.concurrent.duration._
-import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, UserDbEntry}
+
+import com.receipty.bantu.core.db.mysql.service.MysqlDbService.{ItemDbEntry, Sale, UserDbEntry}
 import com.receipty.bantu.service.Db.DbService._
 import com.receipty.bantu.service.test.TestServiceT
 import com.receipty.bantu.service.util.ReceiptyUtils
@@ -16,9 +17,7 @@ class DbServiceSpec extends TestServiceT {
       dbService ! AddUserRequest(
         user = UserDbEntry(
           phoneNumber = "+2348020686607",
-          password = ReceiptyUtils.hashPassword("1234"),
-          province = 1,
-          county = 2
+          password = ReceiptyUtils.hashPassword("1234")
         )
       )
       val result = expectMsgClass(

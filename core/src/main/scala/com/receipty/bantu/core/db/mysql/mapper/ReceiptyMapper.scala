@@ -76,19 +76,19 @@ private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
   }
 
   def addItemsIntoDb(items : List[ItemDbEntry]) = {
-    val query = s"INSERT INTO item (description,owner) VALUES " + items.foldLeft(("",1)){
+    val query = s"INSERT INTO item (alias,description,owner) VALUES " + items.foldLeft(("",1)){
       case ((str,ind), item) =>
         if(ind < items.length) {
-          (str + s"('${item.description}',${item.owner}),",ind+1)
+          (str + s"('${item.alias}','${item.description}',${item.owner}),",ind+1)
         }else{
-          (str + s"('${item.description}',${item.owner});",ind+1)
+          (str + s"('${item.alias}','${item.description}',${item.owner});",ind+1)
         }
     }._1
     pool.sendPreparedStatement(query)
   }
 
   def insertUserIntoDb(user : UserDbEntry) = {
-    val query = s"INSERT INTO user (phone,password,province,county) VALUES ('${user.phoneNumber}','${user.password}',${user.province},${user.county})"
+    val query = s"INSERT INTO user (phone,password,businessName,natureOfBusiness) VALUES ('${user.phoneNumber}','${user.password}','${user.businessName}','${user.natureOfBusiness}')"
     pool.sendPreparedStatement(query)
   }
 
@@ -107,6 +107,7 @@ private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
     ItemDbEntry(
       id          = row("iid").asInstanceOf[Int],
       description = row("description").asInstanceOf[String],
+      alias       =row("alias").asInstanceOf[String],
       owner       = row("owner").asInstanceOf[Int],
       added       = row("added").asInstanceOf[LocalDateTime].toString("yyyy-MM-dd")
     )
@@ -114,12 +115,12 @@ private[mysql] trait ReceiptyMapperT extends ReceiptyMySqlDb  {
   def rowToUserModel(row: RowData): UserDbEntry = {
 
     UserDbEntry(
-      id          = row("uid").asInstanceOf[Int],
-      phoneNumber = row("phone").asInstanceOf[String],
-      password    = row("password").asInstanceOf[String],
-      county      = row("county").asInstanceOf[Int],
-      province    = row("province").asInstanceOf[Int],
-      joined      = row("joined").asInstanceOf[LocalDateTime].toString("yyyy-MM-dd")
+      id               = row("uid").asInstanceOf[Int],
+      phoneNumber      = row("phone").asInstanceOf[String],
+      password         = row("password").asInstanceOf[String],
+      natureOfBusiness = row("natureOfBusiness").asInstanceOf[Int],
+      businessName     = row("businessName").asInstanceOf[String],
+      joined           = row("joined").asInstanceOf[LocalDateTime].toString("yyyy-MM-dd")
     )
   }
 }

@@ -6,7 +6,6 @@ target/**
 project/project/**
 project/target/**
 *pyc
-core/src/main/resources/**
 push.sh
 
 **/target/**

@@ -16,12 +16,12 @@ object MysqlDbService{
   sealed trait Data
 
   case class UserDbEntry (
-    id: Int = 0,
-    phoneNumber: String,
-    password: String,
-    province : Int ,
-    county :Int ,
-    joined : String = ""
+     id: Int = 0,
+     phoneNumber: String,
+     password: String,
+     businessName : String = "",
+     natureOfBusiness :Int = 0,
+     joined : String = ""
   ) extends MySqlDbCacheEntry with Ordered[UserDbEntry] with Data {
     override def compare(that: UserDbEntry): Int = this.id compare  that.id
   }
@@ -29,6 +29,7 @@ object MysqlDbService{
   case class ItemDbEntry(
    id : Int ,
    description : String,
+   alias : String = "",
    owner  : Int,
    added : String
    )extends MySqlDbCacheEntry with Ordered[UserDbEntry] with Data   {

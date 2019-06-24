@@ -2,7 +2,7 @@ package com.receipty.bantu.service.Messaging
 
 import akka.actor.Props
 import akka.http.scaladsl.model.{FormData, HttpRequest, StatusCodes}
-import com.receipty.bantu.service.Messaging.MessageGateway.{SendMessageToClient, SendMessageToClientResponse}
+import com.receipty.bantu.service.Messaging.MessageGateway.{SendMessageRequest, SendMessageResponse}
 import com.receipty.bantu.service.test.TestServiceT
 import com.receipty.bantu.service.util.{HttpClient, HttpClientResponse}
 
@@ -40,35 +40,35 @@ class MessageGatewaySpec extends TestServiceT with HttpClient{
 
   "The Messaging Gateway Actor " must {
     "Send a message with a valid Phone Number " in {
-      gateway ! SendMessageToClient(
+      gateway ! SendMessageRequest(
         id          = 5,
-        phoneNumber = validPhoneNumber,
+        recepient = validPhoneNumber,
         msg         = "Successful"
       )
-      val result = expectMsgClass(classOf[SendMessageToClientResponse])
+      val result = expectMsgClass(classOf[SendMessageResponse])
 
       result.status shouldBe(true)
 
     }
     "Fail while sending a message with an invalid Phone Number " in {
-        gateway ! SendMessageToClient(
+        gateway ! SendMessageRequest(
           id          = 5,
-          phoneNumber = inValidPhoneNumber,
+          recepient = inValidPhoneNumber,
           msg         = "Failure"
         )
-        val result = expectMsgClass(classOf[SendMessageToClientResponse])
+        val result = expectMsgClass(classOf[SendMessageResponse])
 
         result.status shouldBe(false)
 
       }
 
     "Give an error when the phone Number is not regiostered..simulating not contacting the broker" in {
-      gateway ! SendMessageToClient(
+      gateway ! SendMessageRequest(
         id          = 5,
-        phoneNumber = "hello",
+        recepient = "hello",
         msg         = "Failure"
       )
-      val result = expectMsgClass(classOf[SendMessageToClientResponse])
+      val result = expectMsgClass(classOf[SendMessageResponse])
 
       result.status shouldBe(false)
     }
